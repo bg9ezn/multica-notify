@@ -10,6 +10,7 @@
   },
   "scopes": [
     "issues:read",
+    "tasks:read",
     "net:BRIDGE_HOST_PLACEHOLDER"
   ],
   "contributes": {
