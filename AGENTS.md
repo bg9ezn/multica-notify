@@ -80,6 +80,10 @@ oracle.
   surface, docs that affect users) adds an entry under CHANGELOG
   `[Unreleased]` in the same commit; internal refactors need not. At release
   time `[Unreleased]` becomes the version section.
+- Bilingual README: `README.md` (English, primary) and `README.zh-CN.md` are
+  kept in sync — user-facing changes (features, config, artifacts, policies)
+  land in both in the same commit. AGENTS.md, CHANGELOG and deploy docs are
+  English-only.
 - Tests live next to their packages; every adapter is tested against
   `httptest`; cross-platform changes are verified with a local
   cross-compile before tagging.
@@ -102,6 +106,13 @@ oracle.
   register in `NewRegistry`, unit-test against `httptest` (success, 5xx
   retry, 4xx no-retry). Keep it thin: receiver-specific knowledge belongs in
   Apprise.
+  - Deliberately deferred: a `shoutrrr` channel type (in-process multi-
+    service fan-out via github.com/containrrr/shoutrrr — Telegram, Pushover,
+    Discord, Slack, SMTP without a Python apprise-api). Evaluated and
+    rejected for now: it breaks the zero-runtime-dependency rule, and its
+    unique coverage (Pushover/Discord/Slack) has no demand while apprise-api
+    already serves the fleet. Revisit only on real demand, a dependency-
+    policy revision, or apprise-api maintenance trouble.
 - **Platform**: one entry in Makefile `PLATFORMS`; verify with a local
   cross-compile; note any Gatekeeper/GOARM caveats in the comment.
 - **Event behavior**: extend `event.Filter` + a message template set; decode
