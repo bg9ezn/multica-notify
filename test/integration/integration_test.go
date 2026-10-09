@@ -168,7 +168,10 @@ type ntfyMessage struct {
 
 func ntfyMessages(t *testing.T, b *bridge) []ntfyMessage {
 	t.Helper()
-	resp, err := http.Get(b.ntfy + "/json?poll=1&topic=" + b.topic)
+	// Read back via the per-topic JSON endpoint: ntfy 2.29's root-level
+	// /json?poll=1 serves the web SPA instead of messages (verified on the
+	// deployment target), while /<topic>/json is reliable.
+	resp, err := http.Get(b.ntfy + "/" + b.topic + "/json?poll=1")
 	if err != nil {
 		t.Fatalf("ntfy read: %v", err)
 	}
