@@ -38,10 +38,10 @@ multica-notify 桥（Go 单二进制）
 make build
 
 # 2. 生成带注释的配置，然后编辑通道
-./bin/multica-notify -init-config config.yaml
+./bin/multica-notify init-config config.yaml
 
 # 3. 启动（先跑通 HTTP；生产必须 HTTPS，见下文）
-MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify -config config.yaml
+MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify serve -c config.yaml
 
 # 4. 不动 Multica 就能发测试投递
 go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
@@ -66,7 +66,7 @@ go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
 
 ## 配置
 
-随时用 `./bin/multica-notify -init-config <路径>` 生成带完整注释的参考配置（模板：`internal/config/example.yaml`）。要点：
+随时用 `./bin/multica-notify init-config <路径>` 生成带完整注释的参考配置（模板：`internal/config/example.yaml`）。要点：
 
 | 字段 | 默认 | 含义 |
 |---|---|---|

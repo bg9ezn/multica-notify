@@ -45,10 +45,10 @@ channel never changes this codebase.
 make build
 
 # 2. Generate the annotated config, then edit the channels
-./bin/multica-notify -init-config config.yaml
+./bin/multica-notify init-config config.yaml
 
 # 3. Run (plain HTTP for now; production must be HTTPS, see below)
-MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify -config config.yaml
+MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify serve -c config.yaml
 
 # 4. Fire a test delivery without touching Multica
 go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
@@ -86,7 +86,7 @@ Full walkthrough (including flag file format and API calls) is in
 ## Configuration
 
 Generate the fully annotated reference any time with
-`./bin/multica-notify -init-config <path>` (template:
+`./bin/multica-notify init-config <path>` (template:
 `internal/config/example.yaml`). Highlights:
 
 | Field | Default | Meaning |

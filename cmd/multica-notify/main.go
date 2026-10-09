@@ -1,19 +1,27 @@
 // Command multica-notify is the event notification bridge for self-hosted
 // Multica: it receives signed plugin-hook deliveries and fans the rendered
 // notifications out to the configured channels (apprise, ntfy, webhook).
+//
+// Command structure (cobra):
+//
+//	multica-notify serve   [-c CONFIG] [-q|-v] [--log-file PATH]
+//	multica-notify init-config <path> [--force]
+//	multica-notify version
 package main
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/bg9ezn/multica-notify/internal/channel"
 	"github.com/bg9ezn/multica-notify/internal/config"
@@ -24,130 +32,207 @@ import (
 )
 
 func main() {
+	root := newRootCmd()
+	if err := root.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func newRootCmd() *cobra.Command {
+	root := &cobra.Command{
+		Use:   "multica-notify",
+		Short: "Event notification bridge for self-hosted Multica",
+		Long: "Receives signed Multica plugin-hook deliveries and fans the rendered\n" +
+			"notifications out to the configured channels (apprise, ntfy, webhook).",
+		Version:           version.Get(),
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+	}
+	root.AddCommand(newServeCmd(), newInitConfigCmd(), newVersionCmd())
+	return root
+}
+
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print the version and exit",
+		Run: func(*cobra.Command, []string) {
+			fmt.Println("multica-notify", version.Get())
+		},
+	}
+}
+
+func newInitConfigCmd() *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "init-config <path>",
+		Short: "Write the annotated example configuration to path",
+		Long: "Writes the example configuration embedded in this binary — it is always\n" +
+			"in lockstep with the supported fields. An existing file is kept unless\n" +
+			"--force is given.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			if err := config.InitConfig(args[0], force); err != nil {
+				return err
+			}
+			fmt.Printf("wrote %s\nnext steps: edit the channels, set MULTICA_NOTIFY_SIGNING_SECRET, then run: multica-notify serve -c %s\n",
+				args[0], args[0])
+			return nil
+		},
+	}
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "overwrite an existing file")
+	return cmd
+}
+
+// slogLevel maps the -q/--quiet and -v/--verbose counters onto slog levels.
+// Quiet wins over verbose: silencing must stay possible in one flag no
+// matter how many -v were typed.
+func slogLevel(quiet, verbose int) slog.Level {
+	switch {
+	case quiet > 0:
+		return slog.LevelError
+	case verbose > 0:
+		return slog.LevelDebug
+	default:
+		return slog.LevelInfo
+	}
+}
+
+func newServeCmd() *cobra.Command {
 	var (
-		configPath    string
-		showVersion   bool
-		initConfig    string
-		forceInitConf bool
+		configPath     string
+		logFile        string
+		quiet, verbose int
 	)
-	flag.StringVar(&configPath, "config", "",
+	cmd := &cobra.Command{
+		Use:   "serve",
+		Short: "Run the notification bridge (the long-running mode)",
+		Long: "Starts the HTTPS hook server and fans accepted deliveries out to the\n" +
+			"configured channels. Logs go to stderr; --log-file additionally mirrors\n" +
+			"them into a file (disabled by default).",
+		RunE: runServe(&configPath, &logFile, &quiet, &verbose),
+	}
+	cmd.Flags().StringVarP(&configPath, "config", "c", "",
 		"path to config.yaml (defaults: /etc/multica-notify/config.yaml, ./config.yaml)")
-	flag.StringVar(&initConfig, "init-config", "",
-		"write the annotated example config to path and exit (existing file kept unless -force)")
-	flag.BoolVar(&forceInitConf, "force", false,
-		"with -init-config: overwrite an existing file")
-	flag.BoolVar(&showVersion, "version", false, "print version and exit")
-	flag.Parse()
-	if showVersion {
-		fmt.Println("multica-notify", version.Get())
-		return
-	}
-	if initConfig != "" {
-		if err := config.InitConfig(initConfig, forceInitConf); err != nil {
-			fmt.Fprintln(os.Stderr, "multica-notify:", err)
-			os.Exit(1)
-		}
-		fmt.Printf("wrote %s\nnext steps: edit the channels, set MULTICA_NOTIFY_SIGNING_SECRET, then run with -config %s\n",
-			initConfig, initConfig)
-		return
-	}
+	cmd.Flags().StringVar(&logFile, "log-file", "",
+		"mirror logs into this file (append; default: stderr only)")
+	cmd.Flags().CountVarP(&quiet, "quiet", "q", "suppress info/warn logs (repeatable)")
+	cmd.Flags().CountVarP(&verbose, "verbose", "v", "verbose logging: debug level (repeatable)")
+	return cmd
+}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	slog.SetDefault(logger)
-
-	if configPath == "" {
-		for _, p := range []string{"/etc/multica-notify/config.yaml", "config.yaml"} {
-			if _, err := os.Stat(p); err == nil {
-				configPath = p
-				break
+func runServe(configPath, logFile *string, quiet, verbose *int) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, _ []string) error {
+		if *configPath == "" {
+			for _, p := range []string{"/etc/multica-notify/config.yaml", "config.yaml"} {
+				if _, err := os.Stat(p); err == nil {
+					*configPath = p
+					break
+				}
 			}
 		}
-	}
-	if configPath == "" {
-		logger.Error("no config file found; pass -config")
-		os.Exit(1)
-	}
-
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		logger.Error("load config", "error", err)
-		os.Exit(1)
-	}
-
-	secret := os.Getenv(cfg.SigningSecretEnv)
-	if secret == "" {
-		logger.Error(fmt.Sprintf(
-			"environment variable %s is not set — rotate the plugin token in Multica workspace settings to obtain the signing secret",
-			cfg.SigningSecretEnv))
-		os.Exit(1)
-	}
-	verifier, err := hookserver.NewVerifier(secret)
-	if err != nil {
-		logger.Error("invalid signing secret", "error", err)
-		os.Exit(1)
-	}
-
-	registry := channel.NewRegistry()
-	cur := buildDeps(cfg, registry, logger)
-	handler := hookserver.NewHandler(verifier, cur)
-	defer handler.Close(10 * time.Second)
-	defer cur.Journal.Close()
-
-	srv := &http.Server{
-		Addr:              cfg.Listen,
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-	serveErr := make(chan error, 1)
-	go func() {
-		logger.Info("multica-notify listening",
-			"addr", cfg.Listen, "tls", cfg.TLS != nil,
-			"channels", len(cur.Channels), "debounce", time.Duration(cfg.Debounce.Window),
-			"version", version.Get())
-		if cfg.TLS != nil {
-			serveErr <- srv.ListenAndServeTLS(cfg.TLS.Cert, cfg.TLS.Key)
-		} else {
-			serveErr <- srv.ListenAndServe()
+		if *configPath == "" {
+			return fmt.Errorf("no config file found; pass --config")
 		}
-	}()
 
-	signals := make(chan os.Signal, 2)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	for {
-		select {
-		case err := <-serveErr:
-			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				logger.Error("server exited", "error", err)
-				os.Exit(1)
+		logger := newLogger(*logFile, slogLevel(*quiet, *verbose))
+		slog.SetDefault(logger)
+		logger.Info("multica-notify starting", "version", version.Get())
+
+		cfg, err := config.Load(*configPath)
+		if err != nil {
+			return fmt.Errorf("load config: %w", err)
+		}
+
+		secret := os.Getenv(cfg.SigningSecretEnv)
+		if secret == "" {
+			return fmt.Errorf(
+				"environment variable %s is not set — rotate the plugin token in Multica workspace settings to obtain the signing secret",
+				cfg.SigningSecretEnv)
+		}
+		verifier, err := hookserver.NewVerifier(secret)
+		if err != nil {
+			return fmt.Errorf("invalid signing secret: %w", err)
+		}
+
+		registry := channel.NewRegistry()
+		cur := buildDeps(cfg, registry, logger)
+		handler := hookserver.NewHandler(verifier, cur)
+		defer handler.Close(10 * time.Second)
+		defer cur.Journal.Close()
+
+		srv := &http.Server{
+			Addr:              cfg.Listen,
+			Handler:           handler,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		serveErr := make(chan error, 1)
+		go func() {
+			logger.Info("multica-notify listening",
+				"addr", cfg.Listen, "tls", cfg.TLS != nil,
+				"channels", len(cur.Channels), "debounce", time.Duration(cfg.Debounce.Window),
+				"muted", !cfg.IsEnabled(), "version", version.Get())
+			if cfg.TLS != nil {
+				serveErr <- srv.ListenAndServeTLS(cfg.TLS.Cert, cfg.TLS.Key)
+			} else {
+				serveErr <- srv.ListenAndServe()
 			}
-			return
-		case s := <-signals:
-			if s == syscall.SIGHUP {
-				reloaded, err := config.Load(configPath)
-				if err != nil {
-					logger.Error("config reload failed, keeping previous configuration", "error", err)
+		}()
+
+		signals := make(chan os.Signal, 2)
+		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		for {
+			select {
+			case err := <-serveErr:
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
+					return fmt.Errorf("server exited: %w", err)
+				}
+				return nil
+			case s := <-signals:
+				if s == syscall.SIGHUP {
+					reloaded, err := config.Load(*configPath)
+					if err != nil {
+						logger.Error("config reload failed, keeping previous configuration", "error", err)
+						continue
+					}
+					next := buildDeps(reloaded, registry, logger)
+					handler.UpdateDeps(next)
+					cur.Journal.Close()
+					cur = next
+					logger.Info("configuration reloaded",
+						"channels", len(next.Channels), "debounce", time.Duration(reloaded.Debounce.Window))
 					continue
 				}
-				next := buildDeps(reloaded, registry, logger)
-				handler.UpdateDeps(next)
-				cur.Journal.Close()
-				cur = next
-				logger.Info("configuration reloaded",
-					"channels", len(next.Channels), "debounce", time.Duration(reloaded.Debounce.Window))
-				continue
+				logger.Info("shutting down", "signal", s.String())
+				// Flush debounce windows first: a notification whose window was
+				// about to close still goes out instead of being swallowed.
+				if cur.Debouncer != nil {
+					cur.Debouncer.Flush()
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				_ = srv.Shutdown(ctx)
+				cancel()
+				return nil
 			}
-			logger.Info("shutting down", "signal", s.String())
-			// Flush debounce windows first: a notification whose window was
-			// about to close still goes out instead of being swallowed.
-			if cur.Debouncer != nil {
-				cur.Debouncer.Flush()
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			_ = srv.Shutdown(ctx)
-			cancel()
-			return
 		}
 	}
+}
+
+// newLogger builds the process logger. Output goes to stderr; when logFile
+// is set the same stream is additionally mirrored (appended) into the file.
+func newLogger(logFile string, level slog.Level) *slog.Logger {
+	writers := []io.Writer{os.Stderr}
+	if logFile != "" {
+		f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			// Mirroring is best-effort: losing the file must not lose the process.
+			fmt.Fprintf(os.Stderr, "multica-notify: log-file %s unavailable (%v); logging to stderr only\n", logFile, err)
+		} else {
+			writers = append(writers, f)
+		}
+	}
+	return slog.New(slog.NewTextHandler(io.MultiWriter(writers...), &slog.HandlerOptions{Level: level}))
 }
 
 // buildDeps materializes configuration into the handler's mutable state.
