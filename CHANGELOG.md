@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- README: release-artifact identification table (which file fits which
+  device, sha256 verification, darwin unsigned note) and a related-projects
+  section (Multica contract references, Apprise/apprise-api, ntfy).
+- Deploy guide: download-a-release option with checksum verification —
+  building from source is now optional.
+- AGENTS.md for coding agents: contract facts, architecture, commands,
+  conventions and release policy.
+
+### Changed
+
+- Local runtime configuration files (`config.yaml`, `.env`, ...) are
+  git-ignored; the shipped template remains
+  `deploy/examples/config.example.yaml`.
+
 ## [0.1.0] - 2026-10-10
 
 Initial stable release.
