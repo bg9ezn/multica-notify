@@ -43,6 +43,10 @@ test-integration: ## Run integration tests against a real ntfy (docker compose)
 	docker compose -f $(COMPOSE_TEST) down --remove-orphans >/dev/null 2>&1 || true; \
 	exit $$rc
 
+.PHONY: test-integration-standalone
+test-integration-standalone: ## Run integration tests against a system ntfy already listening on 127.0.0.1:8085 (no docker)
+	go test -race -tags=integration -count=1 ./test/integration/...
+
 .PHONY: lint
 lint: ## gofmt (no diff allowed) + go vet
 	@unformatted=$$(gofmt -l .); if [ -n "$$unformatted" ]; then \

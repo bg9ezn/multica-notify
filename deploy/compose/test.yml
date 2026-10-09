@@ -1,7 +1,9 @@
 # Dependencies for `make test-integration`. Minimal by design: one real ntfy.
+# Version is pinned to the release verified against the integration suite
+# (see AGENTS.md contract facts); bump deliberately, not casually.
 services:
   ntfy:
-    image: binwiederhier/ntfy:latest
+    image: binwiederhier/ntfy:v2.29.0
     command: ["serve"]
     ports:
       - "127.0.0.1:8085:80"

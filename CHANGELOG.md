@@ -45,6 +45,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - The standalone example file was removed in favor of the embedded template
   served by `-init-config`.
+- CI integration tests install ntfy from its GitHub release binary instead
+  of pulling `binwiederhier/ntfy:latest` from Docker Hub — shared runner IPs
+  trip the unauthenticated pull rate limit; the compose test dependency is
+  pinned to v2.29.0 (the release verified against the suite).
 - Related-projects guidance clarified: Shoutrrr ships as a Go library/CLI
   only (no HTTP API) and is not an integration path for this bridge; a
   receiver without Apprise coverage is served by a thin native adapter

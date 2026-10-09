@@ -24,12 +24,30 @@ jobs:
     name: Integration tests (real ntfy)
     runs-on: ubuntu-latest
     steps:
+      # ntfy is installed from its GitHub release binary instead of Docker
+      # Hub: anonymous Docker Hub pulls share IP pools across runners and
+      # trip the unauthenticated pull rate limit.
       - uses: actions/checkout@v4
+      - name: Install ntfy v2.29.0 (release binary)
+        run: |
+          curl -fsSL -o /tmp/ntfy.tar.gz \
+            https://github.com/binwiederhier/ntfy/releases/download/v2.29.0/ntfy_2.29.0_linux_amd64.tar.gz
+          tar -xzf /tmp/ntfy.tar.gz -C /tmp
+          sudo install -m0755 /tmp/ntfy_*_linux_amd64/ntfy /usr/local/bin/ntfy
+          ntfy --version
+      - name: Start ntfy
+        run: |
+          ntfy serve --listen-http 127.0.0.1:8085 >/tmp/ntfy.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8085/v1/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8085/v1/health >/dev/null
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: make test-integration
-        run: make test-integration
+      - name: Integration tests (standalone target)
+        run: make test-integration-standalone
 
   dco:
     name: DCO sign-off
