@@ -8,6 +8,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Release matrix extended to `linux/riscv64` and `linux/arm` (built with
+  GOARM=6, named `armv6` — one artifact covers every 32-bit ARM board:
+  Pi Zero/1 through Pi 2/3 on a 32-bit OS).
+
+## [0.2.1] - 2026-10-10
+
+### Added
+
 - Release matrix extended to `linux/loong64` (Loongson) and `darwin/amd64`
   (Intel Mac) + `darwin/arm64` (Apple Silicon); darwin binaries are unsigned
   (Gatekeeper: `xattr -d com.apple.quarantine` on first run).

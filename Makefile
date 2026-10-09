@@ -6,11 +6,12 @@ RELEASE_LDFLAGS := -s -w $(VERSION_FLAG)
 COMPOSE_TEST := deploy/compose/test.yml
 # Release targets: os/arch pairs, extensible one-line-per-platform.
 # Raspberry Pi (64-bit OS) is linux/arm64 — the same artifact as any
-# 64-bit Linux; 32-bit Raspbian would need "linux/arm" with GOARM=7.
-# linux/loong64 covers Loongson (LoongArch64, Go 1.19+ first-class port).
+# 64-bit Linux. linux/arm is built with GOARM=6 (named armv6) so one
+# artifact covers every 32-bit ARM: Pi Zero/1 (v6) through Pi 2/3 on a
+# 32-bit OS (v7+). linux/loong64 covers Loongson (LoongArch64).
 # darwin binaries are unsigned — macOS Gatekeeper needs
 # `xattr -d com.apple.quarantine <binary>` on first run.
-PLATFORMS := linux/amd64 linux/arm64 linux/loong64 windows/amd64 windows/arm64 darwin/amd64 darwin/arm64
+PLATFORMS := linux/amd64 linux/arm64 linux/loong64 linux/riscv64 linux/arm windows/amd64 windows/arm64 darwin/amd64 darwin/arm64
 
 .PHONY: help
 help: ## List available targets
@@ -53,10 +54,13 @@ package: ## Cross-compile release artifacts for all PLATFORMS into dist/
 	mkdir -p dist
 	@set -e; for p in $(PLATFORMS); do \
 		os=$${p%/*}; arch=$${p#*/}; \
+		goarm=""; namearch=$$arch; \
+		if [ "$$os/$$arch" = "linux/arm" ]; then goarm="GOARM=6"; namearch="armv6"; fi; \
 		ext=$$([ "$$os" = "windows" ] && echo .exe || echo ""); \
-		echo "building $$os/$$arch"; \
-		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" \
-			-o "dist/$(BINARY)-$(VERSION)-$$os-$$arch$$ext" ./cmd/$(BINARY); \
+		echo "building $$os/$$namearch"; \
+		\
+		env CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $$goarm go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" \
+			-o "dist/$(BINARY)-$(VERSION)-$$os-$$namearch$$ext" ./cmd/$(BINARY); \
 	done
 	cd dist && sha256sum $(BINARY)-$(VERSION)-* > sha256sums.txt
 	@echo "artifacts in dist/:"
