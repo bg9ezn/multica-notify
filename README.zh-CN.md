@@ -132,6 +132,32 @@ internal/httpx       共享的带重试 JSON POST
 - [`deploy/tls/gen-certs.sh`](./deploy/tls/gen-certs.sh) — 内网来源所需的本地 CA + 服务证书
 - [`docs/deploy-selfhost.md`](./docs/deploy-selfhost.md) — 端到端操作手册
 
+## 发布产物
+
+每个 tag 产出每个平台一个静态链接二进制 + `sha256sums.txt`。命名规则：`multica-notify-<版本>-<系统>-<架构>[.exe]`。
+
+| 产物 | 适用 |
+|---|---|
+| `...-linux-amd64` | 64 位 x86 Linux（服务器、PC、NAS） |
+| `...-linux-arm64` | 64 位 ARM Linux——**树莓派 3/4/5**、云上 ARM 实例 |
+| `...-linux-armv6` | 32 位 ARM Linux——树莓派 Zero/1、32 位系统的 Pi 2/3（一个包覆盖 ARMv6 至 ARMv8 32 位模式） |
+| `...-linux-loong64` | 龙芯（LoongArch64）Linux |
+| `...-linux-riscv64` | RISC-V Linux（昉·星光 2、Lichee Pi 4A 等） |
+| `...-windows-amd64.exe` | 64 位 Windows |
+| `...-windows-arm64.exe` | Windows on ARM |
+| `...-darwin-amd64` | Intel Mac |
+| `...-darwin-arm64` | Apple Silicon Mac |
+
+运行前校验：`sha256sum -c sha256sums.txt`。二进制为静态链接（CGO 关闭）——下载、`chmod +x`、直接运行。darwin 构建未签名：首次运行需 `xattr -d com.apple.quarantine <binary>`。
+
+## 相关项目
+
+| 项目 | 关系 |
+|---|---|
+| [Multica](https://github.com/multica-ai/multica) | 本桥所扩展的自托管智能体平台。这里实现的 hook 契约即 Multica 已发布的插件契约；参见上游 [RFC #1964](https://github.com/multica-ai/multica/issues/1964)（外发 webhook）与官方 `triage-notify` 示例——本项目的签名处理以该示例为基准。 |
+| [Apprise](https://github.com/caronc/apprise) / [apprise-api](https://github.com/caronc/apprise-api) | 128+ 服务的扇出层（企微、钉钉、飞书、Telegram、邮件……）。桥走 apprise-api 的 HTTP 协议；若偏好纯 Go 替代可看 [Shoutrrr](https://github.com/containrrr/shoutrrr)。 |
+| [ntfy](https://github.com/binwiederhier/ntfy) | 自托管 HTTP 手机推送——推荐的个人通道。同类可选：[Gotify](https://github.com/gotify/server)。 |
+
 ## 版本规则
 
 SemVer（`v主.次.补`），`v` 前缀打 tag；每个 tag 自动触发全平台（Makefile 的 `PLATFORMS`）产物发布。

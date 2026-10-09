@@ -86,7 +86,9 @@ oracle.
   new config surface/platforms; MAJOR = breaking.
 - Release: move CHANGELOG `[Unreleased]` into the version section, tag
   `vX.Y.Z`, push the tag — the release workflow builds every `PLATFORMS`
-  entry with checksums and publishes.
+  entry with checksums and publishes. Artifacts are named
+  `multica-notify-<version>-<os>-<arch>[.exe]`; `linux/arm` ships as
+  `armv6` (GOARM=6, covers all 32-bit ARM).
 - Version string precedence: ldflags injection → build-info module version →
   embedded VCS revision → `dev` (see `internal/version`).
 

@@ -162,6 +162,35 @@ channel-isolation while apprise is down).
 - [`deploy/tls/gen-certs.sh`](./deploy/tls/gen-certs.sh) — local CA + server cert for private origins
 - [`docs/deploy-selfhost.md`](./docs/deploy-selfhost.md) — end-to-end walkthrough
 
+## Release artifacts
+
+Every tag produces one statically-linked binary per platform plus
+`sha256sums.txt`. Naming: `multica-notify-<version>-<os>-<arch>[.exe]`.
+
+| Artifact | For |
+|---|---|
+| `...-linux-amd64` | 64-bit x86 Linux (servers, PCs, NAS) |
+| `...-linux-arm64` | 64-bit ARM Linux — **Raspberry Pi 3/4/5**, cloud ARM instances |
+| `...-linux-armv6` | 32-bit ARM Linux — Raspberry Pi Zero/1, Pi 2/3 on a 32-bit OS (one binary covers ARMv6 through ARMv8 in 32-bit mode) |
+| `...-linux-loong64` | Loongson (LoongArch64) Linux |
+| `...-linux-riscv64` | RISC-V Linux (VisionFive 2, Lichee Pi 4A, ...) |
+| `...-windows-amd64.exe` | 64-bit Windows |
+| `...-windows-arm64.exe` | Windows on ARM |
+| `...-darwin-amd64` | Intel Mac |
+| `...-darwin-arm64` | Apple Silicon Mac |
+
+Verify before running: `sha256sum -c sha256sums.txt`. Binaries are statically
+linked (CGO disabled) — download, `chmod +x`, run. Darwin builds are unsigned:
+`xattr -d com.apple.quarantine <binary>` on first run.
+
+## Related projects
+
+| Project | Relationship |
+|---|---|
+| [Multica](https://github.com/multica-ai/multica) | The self-hosted agent platform this bridge extends. The hook contract implemented here is Multica's published plugin contract; see upstream [RFC #1964](https://github.com/multica-ai/multica/issues/1964) (outbound webhooks) and the official `triage-notify` example — this project's signature handling follows that oracle. |
+| [Apprise](https://github.com/caronc/apprise) / [apprise-api](https://github.com/caronc/apprise-api) | The 128+ service fan-out layer (WeCom, DingTalk, Feishu, Telegram, email, ...). The bridge speaks the apprise-api HTTP protocol; if you prefer a native-Go alternative, see [Shoutrrr](https://github.com/containrrr/shoutrrr). |
+| [ntfy](https://github.com/binwiederhier/ntfy) | Self-hosted HTTP push to your phone — the recommended personal channel. [Gotify](https://github.com/gotify/server) is a comparable alternative. |
+
 ## Versioning
 
 SemVer (`vMAJOR.MINOR.PATCH`), tagged with a `v` prefix; every tag triggers a

@@ -16,11 +16,30 @@ Multica-side facts referenced here were verified against multica source
 - A notification receiver this doc uses: ntfy (native package or
   `deploy/compose/deploy.yml`), and optionally an apprise-api instance
 
-## 1. Build and install the bridge
+## 1. Get and install the bridge
+
+Option A — download a release artifact (no build toolchain needed; see the
+README's artifact table, e.g. `linux-arm64` for a Raspberry Pi 5):
+
+```bash
+VER=v0.1.0
+BASE="https://github.com/bg9ezn/multica-notify/releases/download/$VER"
+curl -fsSLO "$BASE/multica-notify-$VER-linux-arm64"
+curl -fsSLO "$BASE/sha256sums.txt"
+grep linux-arm64 sha256sums.txt | sha256sum -c -
+sudo install -m 0755 "multica-notify-$VER-linux-arm64" /usr/local/bin/multica-notify
+```
+
+Option B — build from source:
 
 ```bash
 make build
 sudo install -m 0755 bin/multica-notify /usr/local/bin/
+```
+
+Either way, finish the install layout:
+
+```bash
 sudo useradd --system --home /var/lib/multica-notify --shell /usr/sbin/nologin multica-notify
 sudo mkdir -p /etc/multica-notify /var/lib/multica-notify
 sudo chown multica-notify:multica-notify /var/lib/multica-notify
