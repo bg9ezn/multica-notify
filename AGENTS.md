@@ -21,7 +21,7 @@ lives in Apprise — never in this codebase.
 | Integration tests (real ntfy) | `make test-integration` (needs docker) |
 | Build / lint / package | `make build` / `make lint` / `make package` |
 | Single test | `go test -race -count=1 -run TestName ./internal/hookserver/` |
-| CLI surface | `multica-notify serve \| init-config \| version` (cobra) |
+| CLI surface | `multica-notify serve \| init-config \| test \| version` (cobra) |
 
 Windows note: a 32-bit gcc breaks `-race` locally; CI enforces race anyway.
 

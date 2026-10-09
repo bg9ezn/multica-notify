@@ -46,11 +46,24 @@ func newRootCmd() *cobra.Command {
 			"notifications out to the configured channels (apprise, ntfy, webhook).",
 		Version:           version.Get(),
 		SilenceUsage:      true,
-		SilenceErrors:     true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
-	root.AddCommand(newServeCmd(), newInitConfigCmd(), newVersionCmd())
+	root.AddCommand(newServeCmd(), newInitConfigCmd(), newTestCmd(), newVersionCmd())
 	return root
+}
+
+// resolveConfigPath applies the default search locations when no --config
+// was given. Shared by serve and test.
+func resolveConfigPath(configPath *string) {
+	if *configPath != "" {
+		return
+	}
+	for _, p := range []string{"/etc/multica-notify/config.yaml", "config.yaml"} {
+		if _, err := os.Stat(p); err == nil {
+			*configPath = p
+			return
+		}
+	}
 }
 
 func newVersionCmd() *cobra.Command {
@@ -124,14 +137,7 @@ func newServeCmd() *cobra.Command {
 
 func runServe(configPath, logFile *string, quiet, verbose *int) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, _ []string) error {
-		if *configPath == "" {
-			for _, p := range []string{"/etc/multica-notify/config.yaml", "config.yaml"} {
-				if _, err := os.Stat(p); err == nil {
-					*configPath = p
-					break
-				}
-			}
-		}
+		resolveConfigPath(configPath)
 		if *configPath == "" {
 			return fmt.Errorf("no config file found; pass --config")
 		}

@@ -10,8 +10,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - Cobra-based command structure: `multica-notify serve` (run the bridge),
   `init-config <path>` (generate the annotated configuration, `--force` to
-  overwrite), `version`, plus root `--version`. Help output and shell
-  completion come with it. **Breaking:** the service entry point moved from
+  overwrite), `test` (send one message to every enabled channel from the
+  current configuration, with per-channel results; exercises the channel
+  egress only — no hook server, journal or signing secret involved),
+  `version`, plus root `--version`. Help output and shell completion come
+  with it. **Breaking:** the service entry point moved from
   `multica-notify -config ...` to `multica-notify serve -c ...` — update the
   systemd `ExecStart` (the shipped unit already does).
 - Log level control and optional file logging on `serve`: `-q/--quiet`

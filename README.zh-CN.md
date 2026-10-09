@@ -43,7 +43,10 @@ make build
 # 3. 启动（先跑通 HTTP；生产必须 HTTPS，见下文）
 MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify serve -c config.yaml
 
-# 4. 不动 Multica 就能发测试投递
+# 4. 向所有已启用通道发一条测试消息（无需 Multica / 签名密钥）
+./bin/multica-notify test -c config.yaml
+
+# 5. 不动 Multica 就能发完整签名投递
 go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
   -secret whsec_... -number 42 -title "试试" -status in_review
 ```

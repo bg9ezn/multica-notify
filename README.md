@@ -50,7 +50,10 @@ make build
 # 3. Run (plain HTTP for now; production must be HTTPS, see below)
 MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify serve -c config.yaml
 
-# 4. Fire a test delivery without touching Multica
+# 4. Send a test message to every enabled channel (no Multica / secret needed)
+./bin/multica-notify test -c config.yaml
+
+# 5. Fire a full signed delivery without touching Multica
 go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
   -secret whsec_... -number 42 -title "Try me" -status in_review
 ```
