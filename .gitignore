@@ -13,6 +13,15 @@ deploy/tls/out/
 # Journal files wherever they land
 journal*.jsonl
 
+# Local runtime configs — the quick start creates one at the repo root;
+# environment-specific values (paths, channels, anything secret-adjacent)
+# never belong in git. The shipped template is deploy/examples/config.example.yaml.
+/config.yaml
+/config.*.yaml
+*.local.yaml
+.env
+.env.*
+
 # Editors
 .idea/
 .vscode/
