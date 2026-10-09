@@ -24,6 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bg9ezn/multica-notify/internal/channel"
 	"github.com/bg9ezn/multica-notify/internal/channel/apprise"
 	"github.com/bg9ezn/multica-notify/internal/channel/ntfy"
@@ -172,9 +175,7 @@ func ntfyMessages(t *testing.T, b *bridge) []ntfyMessage {
 	// /json?poll=1 serves the web SPA instead of messages (verified on the
 	// deployment target), while /<topic>/json is reliable.
 	resp, err := http.Get(b.ntfy + "/" + b.topic + "/json?poll=1")
-	if err != nil {
-		t.Fatalf("ntfy read: %v", err)
-	}
+	require.NoError(t, err, "ntfy read")
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	var out []ntfyMessage
@@ -195,14 +196,9 @@ func ntfyMessages(t *testing.T, b *bridge) []ntfyMessage {
 
 func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatal("condition not met within timeout")
+	// Mature async assertion under the hood; the named wrapper keeps the
+	// scenario call sites readable.
+	assert.Eventually(t, cond, timeout, 20*time.Millisecond, "condition not met within timeout")
 }
 
 func contains(messages []ntfyMessage, substr string) bool {
@@ -219,14 +215,10 @@ func TestEndToEndStatusChangeReachesNtfy(t *testing.T) {
 	before := len(ntfyMessages(t, b))
 
 	status, respBody := b.post(t, issueBody("it-1", 12, "in_review"), time.Now())
-	if status != http.StatusOK {
-		t.Fatalf("status = %d, body=%s", status, respBody)
-	}
+	require.Equal(t, http.StatusOK, status, "body=%s", respBody)
 
 	waitFor(t, 5*time.Second, func() bool { return len(ntfyMessages(t, b)) > before })
-	if !contains(ntfyMessages(t, b), "#12") {
-		t.Fatal("ntfy message with #12 not found")
-	}
+	assert.True(t, contains(ntfyMessages(t, b), "#12"), "ntfy message with #12 not found")
 }
 
 func TestReplayRejectedAndNoSecondNotification(t *testing.T) {

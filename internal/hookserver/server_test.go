@@ -16,6 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bg9ezn/multica-notify/internal/channel"
 	"github.com/bg9ezn/multica-notify/internal/event"
 	"github.com/bg9ezn/multica-notify/internal/message"
@@ -57,21 +60,28 @@ func (c *capturingChannel) count() int {
 func (c *capturingChannel) last() message.Message {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if len(c.messages) == 0 {
+		return message.Message{}
+	}
 	return c.messages[len(c.messages)-1]
 }
 
-// newTestHandler builds a handler wired to the given channels with a short
-// debounce window and a filter accepting only in_review.
+func (c *capturingChannel) titles() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]string, 0, len(c.messages))
+	for _, m := range c.messages {
+		out = append(out, m.Title)
+	}
+	return out
+}
+
 func newTestHandler(t *testing.T, chs ...channel.Channel) *Handler {
 	t.Helper()
 	verifier, err := NewVerifier(testSecret)
-	if err != nil {
-		t.Fatalf("verifier: %v", err)
-	}
+	require.NoError(t, err)
 	renderer, err := message.NewRenderer(nil)
-	if err != nil {
-		t.Fatalf("renderer: %v", err)
-	}
+	require.NoError(t, err)
 	deps := &Deps{
 		Filter: &event.Filter{
 			IssueStatuses:     map[string]bool{"in_review": true},
@@ -91,7 +101,7 @@ func newTestHandler(t *testing.T, chs ...channel.Channel) *Handler {
 	return h
 }
 
-// postSigned performs one authenticated delivery against the test server.
+// postSigned performs one authenticated delivery against the handler.
 func postSigned(t *testing.T, h *Handler, body []byte, mutate func(*http.Request)) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/hooks/issue_status", bytes.NewReader(body))
@@ -107,7 +117,7 @@ func postSigned(t *testing.T, h *Handler, body []byte, mutate func(*http.Request
 }
 
 func issueStatusBody(delivery, status string) []byte {
-	b, _ := json.Marshal(map[string]any{
+	b, err := json.Marshal(map[string]any{
 		"hook_key":      "issue_status",
 		"trigger":       "event",
 		"event_type":    "issue.status_changed",
@@ -126,19 +136,17 @@ func issueStatusBody(delivery, status string) []byte {
 			"status_changed": true,
 		},
 	})
+	if err != nil {
+		panic(err) // marshaling a literal map of primitives cannot fail
+	}
 	return b
 }
 
-func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
+func decodeBody(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	t.Fatal("condition not met within timeout")
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &m), "response not json: %s", rec.Body.String())
+	return m
 }
 
 func TestHandlerAcceptsAndNotifies(t *testing.T) {
@@ -146,18 +154,14 @@ func TestHandlerAcceptsAndNotifies(t *testing.T) {
 	h := newTestHandler(t, cap)
 
 	rec := postSigned(t, h, issueStatusBody("d1", "in_review"), nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
-	}
+	require.Equal(t, http.StatusOK, rec.Code, "body=%s", rec.Body.String())
 
-	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
+	assert.Eventually(t, func() bool { return cap.count() > 0 },
+		2*time.Second, 5*time.Millisecond, "notification should reach the channel")
 	msg := cap.last()
-	if msg.Title == "" || msg.Body == "" {
-		t.Fatalf("rendered message incomplete: %+v", msg)
-	}
-	if !bytes.Contains([]byte(msg.Title), []byte("#7")) {
-		t.Fatalf("title missing issue ref: %q", msg.Title)
-	}
+	assert.NotEmpty(t, msg.Title)
+	assert.NotEmpty(t, msg.Body)
+	assert.Contains(t, msg.Title, "#7", "title should carry the issue ref")
 }
 
 func TestHandlerFiltersNonMatchingStatus(t *testing.T) {
@@ -165,21 +169,12 @@ func TestHandlerFiltersNonMatchingStatus(t *testing.T) {
 	h := newTestHandler(t, cap)
 
 	rec := postSigned(t, h, issueStatusBody("d2", "done"), nil) // filter: only in_review
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-	var resp map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("response not json: %v", err)
-	}
-	if resp["skipped"] == "" {
-		t.Fatalf("expected skip reason in response: %s", rec.Body.String())
-	}
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, true, decodeBody(t, rec)["skipped"] != nil, "expected a skip reason")
+
 	// The debounced path never fires for filtered events.
-	time.Sleep(50 * time.Millisecond)
-	if cap.count() != 0 {
-		t.Fatalf("filtered event notified anyway: %+v", cap.last())
-	}
+	assert.Never(t, func() bool { return cap.count() > 0 },
+		150*time.Millisecond, 20*time.Millisecond, "filtered event must not notify")
 }
 
 func TestHandlerDeduplicatesAcrossRedelivery(t *testing.T) {
@@ -204,21 +199,15 @@ func TestHandlerDeduplicatesAcrossRedelivery(t *testing.T) {
 		return rec
 	}
 
-	if rec := deliverAt(time.Now()); rec.Code != http.StatusOK {
-		t.Fatalf("first delivery: %d, body=%s", rec.Code, rec.Body.String())
-	}
+	require.Equal(t, http.StatusOK, deliverAt(time.Now()).Code, "first delivery")
 	rec := deliverAt(time.Now().Add(time.Second))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("duplicate rejected with %d", rec.Code)
-	}
-	if !bytes.Contains(rec.Body.Bytes(), []byte(`"duplicate":true`)) {
-		t.Fatalf("duplicate not flagged: %s", rec.Body.String())
-	}
-	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
-	time.Sleep(30 * time.Millisecond)
-	if cap.count() != 1 {
-		t.Fatalf("delivered %d times, want 1", cap.count())
-	}
+	require.Equal(t, http.StatusOK, rec.Code, "duplicate must not be rejected")
+	assert.Equal(t, true, decodeBody(t, rec)["duplicate"], "duplicate must be flagged")
+
+	assert.Eventually(t, func() bool { return cap.count() == 1 },
+		2*time.Second, 5*time.Millisecond, "exactly one notification")
+	assert.Never(t, func() bool { return cap.count() > 1 },
+		100*time.Millisecond, 20*time.Millisecond, "redelivery must not notify twice")
 }
 
 func TestHandlerRejectsBadSignatureAndReplay(t *testing.T) {
@@ -229,9 +218,7 @@ func TestHandlerRejectsBadSignatureAndReplay(t *testing.T) {
 	rec := postSigned(t, h, issueStatusBody("d4", "in_review"), func(req *http.Request) {
 		req.Header.Set("x-multica-signature", "v1="+hex.EncodeToString(make([]byte, 32)))
 	})
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("bad signature: status = %d, want 401", rec.Code)
-	}
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
 
 	// Replay: the exact same bytes (same timestamp, same signature) must be
 	// caught by the verifier's seen-set. The fixed timestamp keeps the test
@@ -247,17 +234,13 @@ func TestHandlerRejectsBadSignatureAndReplay(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		return rec
 	}
-	if rec := send(); rec.Code != http.StatusOK {
-		t.Fatalf("first send: status = %d, body=%s", rec.Code, rec.Body.String())
-	}
-	if rec := send(); rec.Code != http.StatusUnauthorized {
-		t.Fatalf("replay: status = %d, want 401", rec.Code)
-	}
-	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
-	time.Sleep(30 * time.Millisecond)
-	if cap.count() != 1 {
-		t.Fatalf("replay delivered extra notifications: %d", cap.count())
-	}
+	require.Equal(t, http.StatusOK, send().Code, "first send")
+	require.Equal(t, http.StatusUnauthorized, send().Code, "replay must be rejected")
+
+	assert.Eventually(t, func() bool { return cap.count() == 1 },
+		2*time.Second, 5*time.Millisecond, "exactly one notification for the original")
+	assert.Never(t, func() bool { return cap.count() > 1 },
+		100*time.Millisecond, 20*time.Millisecond, "replay must not notify again")
 }
 
 func TestHandlerIsolatesFailingChannel(t *testing.T) {
@@ -265,10 +248,11 @@ func TestHandlerIsolatesFailingChannel(t *testing.T) {
 	bad := &failingChannel{name: "bad"}
 	h := newTestHandler(t, good, bad)
 
-	if rec := postSigned(t, h, issueStatusBody("d6", "in_review"), nil); rec.Code != http.StatusOK {
-		t.Fatalf("status = %d", rec.Code)
-	}
-	waitFor(t, 2*time.Second, func() bool { return good.count() > 0 })
+	rec := postSigned(t, h, issueStatusBody("d6", "in_review"), nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	assert.Eventually(t, func() bool { return good.count() > 0 },
+		2*time.Second, 5*time.Millisecond, "healthy channel must still deliver")
 }
 
 func TestHandlerDebounceSendsLatestOnly(t *testing.T) {
@@ -281,14 +265,11 @@ func TestHandlerDebounceSendsLatestOnly(t *testing.T) {
 	_ = postSigned(t, h, issueStatusBody("d8", "done"), nil)
 	_ = postSigned(t, h, issueStatusBody("d9", "in_review"), nil)
 
-	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
-	time.Sleep(30 * time.Millisecond)
-	if got := cap.count(); got != 1 {
-		t.Fatalf("notifications = %d, want 1 (latest-only)", got)
-	}
-	if msg := cap.last(); !bytes.Contains([]byte(msg.Title), []byte("in_review")) {
-		t.Fatalf("latest state not carried: %q", msg.Title)
-	}
+	assert.Eventually(t, func() bool { return cap.count() > 0 },
+		2*time.Second, 5*time.Millisecond, "debounced notification should fire")
+	assert.Never(t, func() bool { return cap.count() > 1 },
+		100*time.Millisecond, 20*time.Millisecond, "flips must collapse to one notification")
+	assert.Contains(t, cap.last().Title, "in_review", "latest state must be carried")
 }
 
 func TestHandlerEventDeliveryWithoutDeliveryID(t *testing.T) {
@@ -302,18 +283,24 @@ func TestHandlerEventDeliveryWithoutDeliveryID(t *testing.T) {
 	// host-side). A host retry regenerates invocation_id but repeats
 	// occurred_at, so the composite key must dedupe them.
 	body := func(invocation string) []byte {
-		b, _ := json.Marshal(map[string]any{
-			"hook_key": "issue_status", "trigger": "event",
-			"event_type":    "issue.status_changed",
-			"invocation_id": invocation, "attempt": 1,
-			"workspace_id": "ws-1", "installation_id": "inst-1",
-			"issue_id":    "i-77",
-			"occurred_at": "2026-10-10T02:00:00Z",
+		b, err := json.Marshal(map[string]any{
+			"hook_key":        "issue_status",
+			"trigger":         "event",
+			"event_type":      "issue.status_changed",
+			"invocation_id":   invocation,
+			"attempt":         1,
+			"workspace_id":    "ws-1",
+			"installation_id": "inst-1",
+			"issue_id":        "i-77",
+			"occurred_at":     "2026-10-10T02:00:00Z",
 			"input": map[string]any{
 				"issue":          map[string]any{"id": "i-77", "number": 8, "title": "No-id event", "status": "in_review"},
 				"status_changed": true,
 			},
 		})
+		if err != nil {
+			panic(err) // marshaling a literal map of primitives cannot fail
+		}
 		return b
 	}
 
@@ -328,21 +315,15 @@ func TestHandlerEventDeliveryWithoutDeliveryID(t *testing.T) {
 		return rec
 	}
 
-	if rec := send("inv-a"); rec.Code != http.StatusOK {
-		t.Fatalf("first: %d %s", rec.Code, rec.Body.String())
-	}
+	require.Equal(t, http.StatusOK, send("inv-a").Code, "first event delivery")
 	rec := send("inv-b") // fresh invocation_id, same logical event
-	if rec.Code != http.StatusOK {
-		t.Fatalf("retry: %d %s", rec.Code, rec.Body.String())
-	}
-	if !bytes.Contains(rec.Body.Bytes(), []byte(`"duplicate":true`)) {
-		t.Fatalf("event retry not deduped: %s", rec.Body.String())
-	}
-	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
-	time.Sleep(30 * time.Millisecond)
-	if cap.count() != 1 {
-		t.Fatalf("delivered %d times, want 1", cap.count())
-	}
+	require.Equal(t, http.StatusOK, rec.Code, "retry must not be rejected")
+	assert.Equal(t, true, decodeBody(t, rec)["duplicate"], "event retry must be deduped by composite key")
+
+	assert.Eventually(t, func() bool { return cap.count() == 1 },
+		2*time.Second, 5*time.Millisecond)
+	assert.Never(t, func() bool { return cap.count() > 1 },
+		100*time.Millisecond, 20*time.Millisecond)
 }
 
 func TestHandlerMutedSuppressesFanOut(t *testing.T) {
@@ -356,22 +337,19 @@ func TestHandlerMutedSuppressesFanOut(t *testing.T) {
 	mutedDeps.Muted = true
 	h.UpdateDeps(&mutedDeps)
 
-	if rec := postSigned(t, h, issueStatusBody("d-mute", "in_review"), nil); rec.Code != http.StatusOK {
-		t.Fatalf("muted delivery: %d, want 200 (host must not retry)", rec.Code)
-	}
-	time.Sleep(60 * time.Millisecond)
-	if cap.count() != 0 {
-		t.Fatalf("muted bridge delivered anyway: %+v", cap.last())
-	}
+	rec := postSigned(t, h, issueStatusBody("d-mute", "in_review"), nil)
+	require.Equal(t, http.StatusOK, rec.Code, "muted bridge must still answer 200 (host must not retry)")
+	assert.Never(t, func() bool { return cap.count() > 0 },
+		150*time.Millisecond, 20*time.Millisecond, "muted bridge must not deliver")
 
 	// Unmute (SIGHUP reload path) -> events flow again.
 	unmutedDeps := *base
 	unmutedDeps.Muted = false
 	h.UpdateDeps(&unmutedDeps)
-	if rec := postSigned(t, h, issueStatusBody("d-unmute", "in_review"), nil); rec.Code != http.StatusOK {
-		t.Fatalf("unmuted delivery: %d", rec.Code)
-	}
-	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
+	rec = postSigned(t, h, issueStatusBody("d-unmute", "in_review"), nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Eventually(t, func() bool { return cap.count() > 0 },
+		2*time.Second, 5*time.Millisecond, "unmuted bridge delivers again")
 }
 
 func TestHandlerRejectsNonPostAndUnknownPaths(t *testing.T) {
@@ -380,31 +358,23 @@ func TestHandlerRejectsNonPostAndUnknownPaths(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/hooks/issue_status", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("GET /hooks/...: status = %d, want 405", rec.Code)
-	}
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 
 	req = httptest.NewRequest(http.MethodPost, "/elsewhere", nil)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("POST /elsewhere: status = %d, want 404", rec.Code)
-	}
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 
 	req = httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /healthz: status = %d, want 200", rec.Code)
-	}
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func mustJournal(t *testing.T) *event.Journal {
 	t.Helper()
 	j, err := event.Open(t.TempDir() + "/journal.jsonl")
-	if err != nil {
-		t.Fatalf("journal: %v", err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { j.Close() })
 	return j
 }

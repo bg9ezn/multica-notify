@@ -7,17 +7,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bg9ezn/multica-notify/internal/message"
 )
 
 func TestEmptyURLDisablesChannel(t *testing.T) {
 	w, err := New("debug", map[string]string{"url": "   "})
-	if err != nil {
-		t.Fatalf("disabled channel returned error: %v", err)
-	}
-	if w != nil {
-		t.Fatal("expected nil channel for empty url")
-	}
+	require.NoError(t, err, "disabled channel returned error")
+	assert.Nil(t, w, "expected nil channel for empty url")
 }
 
 func TestSendPostsTitleBodyMeta(t *testing.T) {
@@ -33,17 +32,15 @@ func TestSendPostsTitleBodyMeta(t *testing.T) {
 	defer srv.Close()
 
 	w, err := New("debug", map[string]string{"url": srv.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	msg := message.Message{
 		Title: "t", Body: "b",
 		Meta: map[string]string{"event_type": "issue.status_changed", "delivery_id": "d1"},
 	}
-	if err := w.Send(context.Background(), msg); err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-	if got.Title != "t" || got.Body != "b" || got.Meta["delivery_id"] != "d1" {
-		t.Fatalf("payload = %+v", got)
-	}
+	require.NoError(t, w.Send(context.Background(), msg))
+
+	assert.Equal(t, "t", got.Title)
+	assert.Equal(t, "b", got.Body)
+	assert.Equal(t, "d1", got.Meta["delivery_id"])
 }

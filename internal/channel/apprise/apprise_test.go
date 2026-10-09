@@ -7,13 +7,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bg9ezn/multica-notify/internal/message"
 )
 
 func TestNewRequiresURL(t *testing.T) {
-	if _, err := New("a", map[string]string{}); err == nil {
-		t.Fatal("missing url accepted")
-	}
+	_, err := New("a", map[string]string{})
+	assert.Error(t, err, "missing url accepted")
 }
 
 func TestSendPostsAppriseAPIPayload(t *testing.T) {
@@ -25,15 +27,12 @@ func TestSendPostsAppriseAPIPayload(t *testing.T) {
 	defer srv.Close()
 
 	a, err := New("wecom", map[string]string{"url": srv.URL + "/notify/wecom"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := a.Send(context.Background(), message.Message{Title: "t", Body: "b"}); err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-	if got["title"] != "t" || got["body"] != "b" || got["type"] != "info" || got["format"] != "text" {
-		t.Fatalf("payload = %v", got)
-	}
+	require.NoError(t, err)
+
+	require.NoError(t, a.Send(context.Background(), message.Message{Title: "t", Body: "b"}))
+	assert.Equal(t, map[string]any{
+		"title": "t", "body": "b", "type": "info", "format": "text",
+	}, got)
 }
 
 func TestSendRetriesOnServerError(t *testing.T) {
@@ -48,13 +47,12 @@ func TestSendRetriesOnServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	a, _ := New("a", map[string]string{"url": srv.URL})
-	if err := a.Send(context.Background(), message.Message{Title: "t", Body: "b"}); err != nil {
-		t.Fatalf("retry did not recover: %v", err)
-	}
-	if attempts != 2 {
-		t.Fatalf("attempts = %d, want 2", attempts)
-	}
+	a, err := New("a", map[string]string{"url": srv.URL})
+	require.NoError(t, err)
+
+	require.NoError(t, a.Send(context.Background(), message.Message{Title: "t", Body: "b"}),
+		"retry did not recover")
+	assert.Equal(t, 2, attempts)
 }
 
 func TestSendDoesNotRetryClientError(t *testing.T) {
@@ -65,11 +63,9 @@ func TestSendDoesNotRetryClientError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	a, _ := New("a", map[string]string{"url": srv.URL})
-	if err := a.Send(context.Background(), message.Message{Title: "t", Body: "b"}); err == nil {
-		t.Fatal("401 accepted")
-	}
-	if attempts != 1 {
-		t.Fatalf("attempts = %d, want 1 (no retry on 4xx)", attempts)
-	}
+	a, err := New("a", map[string]string{"url": srv.URL})
+	require.NoError(t, err)
+
+	assert.Error(t, a.Send(context.Background(), message.Message{Title: "t", Body: "b"}), "401 accepted")
+	assert.Equal(t, 1, attempts, "4xx must not retry")
 }

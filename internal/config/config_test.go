@@ -5,14 +5,15 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func write(t *testing.T, content string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "config.yaml")
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 	return path
 }
 
@@ -25,31 +26,22 @@ channels:
       topic: multica
 `)
 	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if cfg.Listen != ":9097" {
-		t.Errorf("listen default = %q", cfg.Listen)
-	}
-	if time.Duration(cfg.Debounce.Window) != 30*time.Second {
-		t.Errorf("debounce default = %v", cfg.Debounce.Window)
-	}
-	if cfg.Filters.SkipRetryingTasks == nil || !*cfg.Filters.SkipRetryingTasks {
-		t.Errorf("skip_retrying_tasks default = %v, want true", cfg.Filters.SkipRetryingTasks)
-	}
-	if cfg.Filters.OnTaskFailed == nil || !*cfg.Filters.OnTaskFailed {
-		t.Errorf("on_task_failed default = %v, want true", cfg.Filters.OnTaskFailed)
-	}
-	if cfg.SigningSecretEnv != "MULTICA_NOTIFY_SIGNING_SECRET" {
-		t.Errorf("signing env default = %q", cfg.SigningSecretEnv)
-	}
+	require.NoError(t, err)
+
+	assert.Equal(t, ":9097", cfg.Listen, "listen default")
+	assert.Equal(t, 30*time.Second, time.Duration(cfg.Debounce.Window), "debounce default")
+	assert.NotNil(t, cfg.Filters.SkipRetryingTasks)
+	assert.True(t, *cfg.Filters.SkipRetryingTasks, "skip_retrying_tasks default")
+	assert.NotNil(t, cfg.Filters.OnTaskFailed)
+	assert.True(t, *cfg.Filters.OnTaskFailed, "on_task_failed default")
+	assert.Equal(t, "MULTICA_NOTIFY_SIGNING_SECRET", cfg.SigningSecretEnv)
+	assert.True(t, cfg.IsEnabled(), "master switch default")
 }
 
 func TestLoadRejectsMissingChannels(t *testing.T) {
 	path := write(t, "listen: ':9000'\n")
-	if _, err := Load(path); err == nil {
-		t.Fatal("config without channels accepted")
-	}
+	_, err := Load(path)
+	assert.Error(t, err, "config without channels accepted")
 }
 
 func TestLoadRejectsDuplicateChannelNames(t *testing.T) {
@@ -62,9 +54,8 @@ channels:
     type: webhook
     options: {url: "http://x"}
 `)
-	if _, err := Load(path); err == nil {
-		t.Fatal("duplicate channel names accepted")
-	}
+	_, err := Load(path)
+	assert.Error(t, err, "duplicate channel names accepted")
 }
 
 func TestLoadRejectsHalfTLS(t *testing.T) {
@@ -75,9 +66,8 @@ channels:
     type: ntfy
     options: {topic: t}
 `)
-	if _, err := Load(path); err == nil {
-		t.Fatal("cert without key accepted")
-	}
+	_, err := Load(path)
+	assert.Error(t, err, "cert without key accepted")
 }
 
 func TestLoadParsesDurations(t *testing.T) {
@@ -89,12 +79,8 @@ channels:
     options: {topic: t}
 `)
 	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if time.Duration(cfg.Debounce.Window) != 5*time.Second {
-		t.Errorf("window = %v", cfg.Debounce.Window)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 5*time.Second, time.Duration(cfg.Debounce.Window))
 }
 
 func TestLoadRejectsBadDuration(t *testing.T) {
@@ -105,9 +91,8 @@ channels:
     type: ntfy
     options: {topic: t}
 `)
-	if _, err := Load(path); err == nil {
-		t.Fatal("invalid duration accepted")
-	}
+	_, err := Load(path)
+	assert.Error(t, err, "invalid duration accepted")
 }
 
 func TestChannelEnabledDefaultsTrueAndHonorsFalse(t *testing.T) {
@@ -122,13 +107,21 @@ channels:
     options: {topic: t}
 `)
 	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if !cfg.Channels[0].IsEnabled() {
-		t.Error("channel without enabled should default to true")
-	}
-	if cfg.Channels[1].IsEnabled() {
-		t.Error("enabled: false not honored")
-	}
+	require.NoError(t, err)
+
+	assert.True(t, cfg.Channels[0].IsEnabled(), "channel without enabled should default to true")
+	assert.False(t, cfg.Channels[1].IsEnabled(), "enabled: false not honored")
+}
+
+func TestMasterSwitchHonorsFalse(t *testing.T) {
+	path := write(t, `
+enabled: false
+channels:
+  - name: a
+    type: ntfy
+    options: {topic: t}
+`)
+	cfg, err := Load(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.IsEnabled(), "master switch not honored")
 }

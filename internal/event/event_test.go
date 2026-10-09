@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func envelope(eventType, input string) *Event {
@@ -19,90 +22,60 @@ func envelope(eventType, input string) *Event {
 
 func TestDecodeIssueSnapshot(t *testing.T) {
 	e := envelope(EventIssueStatusChanged, `{"issue":{"id":"i-1","number":12,"title":"T","status":"in_review"},"status_changed":true}`)
-	if e.Issue == nil {
-		t.Fatal("issue not decoded")
-	}
-	if e.Issue.Status != "in_review" || e.Issue.Number != 12 {
-		t.Fatalf("issue decoded wrong: %+v", e.Issue)
-	}
-	if got := e.Ref(); got != "#12" {
-		t.Fatalf("ref = %q, want #12", got)
-	}
+	require.NotNil(t, e.Issue, "issue not decoded")
+	assert.Equal(t, "in_review", e.Issue.Status)
+	assert.Equal(t, 12, e.Issue.Number)
+	assert.Equal(t, "#12", e.Ref())
 }
 
 func TestDecodeTaskFailure(t *testing.T) {
 	e := envelope(EventTaskFailed, `{"task_id":"t-1","issue_id":"i-2","status":"failed","failure_reason":"boom","retry_pending":true}`)
-	if e.Task == nil || e.Task.FailureReason != "boom" || !e.Task.RetryPending {
-		t.Fatalf("task decoded wrong: %+v", e.Task)
-	}
-	if got := e.Ref(); got != "t-1" {
-		t.Fatalf("ref = %q, want t-1", got)
-	}
+	require.NotNil(t, e.Task, "task not decoded")
+	assert.Equal(t, "boom", e.Task.FailureReason)
+	assert.True(t, e.Task.RetryPending)
+	assert.Equal(t, "t-1", e.Ref())
 }
 
 func TestDecodeToleratesMissingTypedPayload(t *testing.T) {
-	e := envelope(EventIssueStatusChanged, `{}`)
-	if e.Issue != nil {
-		t.Fatal("empty issue payload should decode to nil Issue")
-	}
+	assert.Nil(t, envelope(EventIssueStatusChanged, `{}`).Issue,
+		"empty issue payload should decode to nil Issue")
 }
 
 func TestFilterAllowsConfiguredStatusesOnly(t *testing.T) {
 	f := &Filter{IssueStatuses: map[string]bool{"in_review": true}, OnTaskFailed: true}
 
-	inReview := envelope(EventIssueStatusChanged, `{"issue":{"status":"in_review"}}`)
-	done := envelope(EventIssueStatusChanged, `{"issue":{"status":"done"}}`)
-	if !f.Allow(inReview) {
-		t.Error("in_review should pass")
-	}
-	if f.Allow(done) {
-		t.Error("done should be filtered")
-	}
-	if f.Allow(envelope(EventIssueStatusChanged, `{}`)) {
-		t.Error("missing snapshot should be filtered")
-	}
+	assert.True(t, f.Allow(envelope(EventIssueStatusChanged, `{"issue":{"status":"in_review"}}`)))
+	assert.False(t, f.Allow(envelope(EventIssueStatusChanged, `{"issue":{"status":"done"}}`)))
+	assert.False(t, f.Allow(envelope(EventIssueStatusChanged, `{}`)), "missing snapshot must be filtered")
 }
 
 func TestFilterEmptyStatusListMeansAll(t *testing.T) {
 	f := &Filter{}
-	if !f.Allow(envelope(EventIssueStatusChanged, `{"issue":{"status":"done"}}`)) {
-		t.Error("empty list should pass every status")
-	}
+	assert.True(t, f.Allow(envelope(EventIssueStatusChanged, `{"issue":{"status":"done"}}`)))
 }
 
 func TestFilterTaskSwitches(t *testing.T) {
 	terminal := envelope(EventTaskFailed, `{"task_id":"t","retry_pending":false}`)
 	retrying := envelope(EventTaskFailed, `{"task_id":"t","retry_pending":true}`)
+	completed := envelope(EventTaskCompleted, `{"task_id":"t"}`)
 
 	f := &Filter{OnTaskFailed: true, SkipRetryingTasks: true}
-	if !f.Allow(terminal) {
-		t.Error("terminal failure should pass")
-	}
-	if f.Allow(retrying) {
-		t.Error("retrying failure should be skipped")
-	}
+	assert.True(t, f.Allow(terminal), "terminal failure should pass")
+	assert.False(t, f.Allow(retrying), "retrying failure should be skipped")
 
 	f2 := &Filter{OnTaskFailed: true, SkipRetryingTasks: false}
-	if !f2.Allow(retrying) {
-		t.Error("retrying failure should pass when skipping disabled")
-	}
+	assert.True(t, f2.Allow(retrying), "retrying failure should pass when skipping disabled")
 
 	f3 := &Filter{}
-	if f3.Allow(terminal) {
-		t.Error("on_task_failed=false should filter failures")
-	}
-	if f3.Allow(envelope(EventTaskCompleted, `{"task_id":"t"}`)) {
-		t.Error("on_task_completed=false should filter completions")
-	}
+	assert.False(t, f3.Allow(terminal), "on_task_failed=false should filter failures")
+	assert.False(t, f3.Allow(completed), "on_task_completed=false should filter completions")
 }
 
 func TestFilterHeartbeatAlwaysPasses(t *testing.T) {
 	f := &Filter{} // everything off
 	beat := envelope("", `{}`)
 	beat.Trigger = TriggerSchedule
-	if !f.Allow(beat) {
-		t.Error("schedule heartbeat must always pass")
-	}
+	assert.True(t, f.Allow(beat), "schedule heartbeat must always pass")
 }
 
 func TestDebouncerSendsLatestWithinWindow(t *testing.T) {
@@ -113,10 +86,7 @@ func TestDebouncerSendsLatestWithinWindow(t *testing.T) {
 	d.Submit("k", func() { sent <- "second" })
 	d.Submit("k", func() { sent <- "latest" })
 
-	got := <-sent
-	if got != "latest" {
-		t.Fatalf("emitted %q, want latest", got)
-	}
+	assert.Equal(t, "latest", <-sent)
 	select {
 	case extra := <-sent:
 		t.Fatalf("extra emission %q", extra)
@@ -145,11 +115,10 @@ func TestDebouncerFlushSendsPending(t *testing.T) {
 	sent := make(chan string, 1)
 	d.Submit("k", func() { sent <- "flushed" })
 	d.Flush()
+
 	select {
 	case got := <-sent:
-		if got != "flushed" {
-			t.Fatalf("got %q", got)
-		}
+		assert.Equal(t, "flushed", got)
 	default:
 		t.Fatal("flush did not emit pending")
 	}
@@ -158,41 +127,26 @@ func TestDebouncerFlushSendsPending(t *testing.T) {
 func TestJournalRoundTripAndRestart(t *testing.T) {
 	path := t.TempDir() + "/nested/journal.jsonl"
 	j, err := Open(path)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if j.Seen("d1") {
-		t.Fatal("fresh journal reports seen")
-	}
-	if err := j.Record("d1"); err != nil {
-		t.Fatalf("Record: %v", err)
-	}
-	if err := j.Record("d2"); err != nil {
-		t.Fatalf("Record: %v", err)
-	}
+	require.NoError(t, err)
+
+	assert.False(t, j.Seen("d1"), "fresh journal reports seen")
+	require.NoError(t, j.Record("d1"))
+	require.NoError(t, j.Record("d2"))
 	j.Close()
 
 	j2, err := Open(path)
-	if err != nil {
-		t.Fatalf("reopen: %v", err)
-	}
+	require.NoError(t, err)
 	defer j2.Close()
-	if !j2.Seen("d1") || !j2.Seen("d2") {
-		t.Fatal("records lost across reopen")
-	}
-	if j2.Seen("d3") {
-		t.Fatal("phantom record")
-	}
+	assert.True(t, j2.Seen("d1"), "record lost across reopen")
+	assert.True(t, j2.Seen("d2"), "record lost across reopen")
+	assert.False(t, j2.Seen("d3"), "phantom record")
 }
 
 func TestJournalRecordIsIdempotent(t *testing.T) {
 	j, err := Open(t.TempDir() + "/journal.jsonl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer j.Close()
-	_ = j.Record("d1")
-	if err := j.Record("d1"); err != nil {
-		t.Fatalf("duplicate record errored: %v", err)
-	}
+
+	require.NoError(t, j.Record("d1"))
+	assert.NoError(t, j.Record("d1"), "duplicate record errored")
 }

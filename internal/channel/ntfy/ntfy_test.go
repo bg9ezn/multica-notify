@@ -8,19 +8,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bg9ezn/multica-notify/internal/message"
 )
 
 func TestNewRequiresTopic(t *testing.T) {
-	if _, err := New("n", map[string]string{}); err == nil {
-		t.Fatal("missing topic accepted")
-	}
+	_, err := New("n", map[string]string{})
+	assert.Error(t, err, "missing topic accepted")
 }
 
 func TestNewRejectsBadPriority(t *testing.T) {
-	if _, err := New("n", map[string]string{"topic": "t", "priority": "9"}); err == nil {
-		t.Fatal("priority 9 accepted")
-	}
+	_, err := New("n", map[string]string{"topic": "t", "priority": "9"})
+	assert.Error(t, err, "priority 9 accepted")
 }
 
 func TestSendPublishesJSONToRoot(t *testing.T) {
@@ -37,29 +38,18 @@ func TestSendPublishesJSONToRoot(t *testing.T) {
 	n, err := New("phone", map[string]string{
 		"server": srv.URL, "topic": "multica", "token": "tk_test", "priority": "5",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := n.Send(context.Background(), message.Message{Title: "标题", Body: "正文"}); err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-	if got["topic"] != "multica" || got["title"] != "标题" || got["message"] != "正文" {
-		t.Fatalf("payload = %v", got)
-	}
-	if got["priority"] != float64(5) {
-		t.Fatalf("priority = %v", got["priority"])
-	}
-	if auth != "Bearer tk_test" {
-		t.Fatalf("auth = %q", auth)
-	}
+	require.NoError(t, err)
+
+	require.NoError(t, n.Send(context.Background(), message.Message{Title: "标题", Body: "正文"}))
+	assert.Equal(t, "multica", got["topic"])
+	assert.Equal(t, "标题", got["title"])
+	assert.Equal(t, "正文", got["message"])
+	assert.Equal(t, float64(5), got["priority"])
+	assert.Equal(t, "Bearer tk_test", auth)
 }
 
 func TestServerDefault(t *testing.T) {
 	n, err := New("n", map[string]string{"topic": "t"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n.server != "https://ntfy.sh" {
-		t.Errorf("server = %q", n.server)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "https://ntfy.sh", n.server)
 }
