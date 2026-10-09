@@ -53,6 +53,10 @@ MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify serve -c config.yam
 # 4. Send a test message to every enabled channel (no Multica / secret needed)
 ./bin/multica-notify test -c config.yaml
 
+#    ... or scope it: one channel, custom text, warning style
+./bin/multica-notify test -c config.yaml --channel wecom-bot \
+  --type warning --title "Channel check" --message "hello from the bridge"
+
 # 5. Fire a full signed delivery without touching Multica
 go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
   -secret whsec_... -number 42 -title "Try me" -status in_review

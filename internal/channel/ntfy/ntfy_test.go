@@ -53,3 +53,30 @@ func TestServerDefault(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://ntfy.sh", n.server)
 }
+
+func TestSendMapsNotifyTypeToPriorityAndTag(t *testing.T) {
+	cases := []struct {
+		msgType      string
+		wantPriority float64
+		wantTags     []any
+	}{
+		{"warning", 4, []any{"warning"}},
+		{"error", 5, []any{"rotating_light"}},
+		{"success", 3, []any{"white_check_mark"}},
+		{"", 3, []any{"bell"}},
+	}
+	for _, tc := range cases {
+		var got map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&got)
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		n, err := New("n", map[string]string{"topic": "t", "server": srv.URL})
+		require.NoError(t, err)
+		require.NoError(t, n.Send(context.Background(), message.Message{Title: "t", Body: "b", Type: tc.msgType}))
+		assert.Equal(t, tc.wantPriority, got["priority"], "type %q priority", tc.msgType)
+		assert.Equal(t, tc.wantTags, got["tags"], "type %q tags", tc.msgType)
+		srv.Close()
+	}
+}

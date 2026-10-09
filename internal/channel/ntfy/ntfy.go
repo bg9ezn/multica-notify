@@ -59,12 +59,24 @@ func New(name string, opts map[string]string) (*Ntfy, error) {
 func (n *Ntfy) Name() string { return n.name }
 
 func (n *Ntfy) Send(ctx context.Context, msg message.Message) error {
+	// Notify-type mapping: warnings and errors escalate the priority; tags
+	// give the notification a recognizable icon on the phone.
+	priority := n.priority
+	tag := "bell"
+	switch msg.Type {
+	case "success":
+		tag = "white_check_mark"
+	case "warning":
+		priority, tag = 4, "warning"
+	case "error":
+		priority, tag = 5, "rotating_light"
+	}
 	payload := map[string]any{
 		"topic":    n.topic,
 		"title":    msg.Title,
 		"message":  msg.Body,
-		"tags":     []string{"bell"},
-		"priority": n.priority,
+		"tags":     []string{tag},
+		"priority": priority,
 	}
 	var headers map[string]string
 	if n.token != "" {

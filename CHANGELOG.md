@@ -12,7 +12,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `init-config <path>` (generate the annotated configuration, `--force` to
   overwrite), `test` (send one message to every enabled channel from the
   current configuration, with per-channel results; exercises the channel
-  egress only — no hook server, journal or signing secret involved),
+  egress only — no hook server, journal or signing secret involved).
+  `test` accepts `--channel <name>` (repeatable, config-order report),
+  `--title` / `--message` (custom text) and `--type
+  info|success|warning|error` — the type rides the message to receivers
+  (apprise notify type; ntfy priority/tags escalate for warning/error) and
+  is also available to the webhook channel's payload.
   `version`, plus root `--version`. Help output and shell completion come
   with it. **Breaking:** the service entry point moved from
   `multica-notify -config ...` to `multica-notify serve -c ...` — update the

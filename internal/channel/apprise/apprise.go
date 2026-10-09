@@ -49,10 +49,14 @@ func New(name string, opts map[string]string) (*Apprise, error) {
 func (a *Apprise) Name() string { return a.name }
 
 func (a *Apprise) Send(ctx context.Context, msg message.Message) error {
+	notifyType := a.notifyType
+	if msg.Type != "" {
+		notifyType = msg.Type
+	}
 	payload := map[string]string{
 		"title":  msg.Title,
 		"body":   msg.Body,
-		"type":   a.notifyType,
+		"type":   notifyType,
 		"format": "text",
 	}
 	return httpx.PostJSON(ctx, a.client, a.url, payload, nil, 2)

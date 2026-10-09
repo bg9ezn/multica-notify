@@ -69,3 +69,18 @@ func TestSendDoesNotRetryClientError(t *testing.T) {
 	assert.Error(t, a.Send(context.Background(), message.Message{Title: "t", Body: "b"}), "401 accepted")
 	assert.Equal(t, 1, attempts, "4xx must not retry")
 }
+
+func TestSendMessageTypeOverridesDefault(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	a, err := New("a", map[string]string{"url": srv.URL})
+	require.NoError(t, err)
+
+	require.NoError(t, a.Send(context.Background(), message.Message{Title: "t", Body: "b", Type: "success"}))
+	assert.Equal(t, "success", got["type"], "message type should override the default")
+}

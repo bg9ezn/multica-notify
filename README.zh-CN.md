@@ -46,6 +46,10 @@ MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify serve -c config.yam
 # 4. 向所有已启用通道发一条测试消息（无需 Multica / 签名密钥）
 ./bin/multica-notify test -c config.yaml
 
+#    ……也可以只测某个通道、自定义内容与通知类型
+./bin/multica-notify test -c config.yaml --channel wecom-bot \
+  --type warning --title "通道检查" --message "来自桥的问候"
+
 # 5. 不动 Multica 就能发完整签名投递
 go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
   -secret whsec_... -number 42 -title "试试" -status in_review
