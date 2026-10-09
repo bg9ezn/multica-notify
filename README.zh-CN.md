@@ -79,6 +79,7 @@ go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
 
 | 字段 | 默认 | 含义 |
 |---|---|---|
+| `enabled` | `true` | **总开关**。`false` = 全局静音：投递照常接收并记账，但抑制全部扇出（SIGHUP 热生效） |
 | `listen` | `:9097` | hook 服务地址 |
 | `tls` | — | 证书/私钥；生产必填（Multica 只接受 https transport） |
 | `filters.issue_statuses` | `[in_review, done]` | 哪些 issue 状态触发通知；空 = 全部 |

@@ -180,12 +180,21 @@ func buildDeps(cfg *config.Config, registry *channel.Registry, logger *slog.Logg
 		}
 		channels = append(channels, ch)
 	}
-	if len(channels) == 0 {
+	// A muted bridge still builds its channels (config stays validated and
+	// unmute needs no rebuild), so zero usable channels is only fatal when
+	// notifications are actually expected to flow.
+	if len(channels) == 0 && cfg.IsEnabled() {
 		logger.Error("no usable channels configured")
 		os.Exit(1)
 	}
 
+	muted := !cfg.IsEnabled()
+	if muted {
+		logger.Warn("notifications MUTED (enabled: false) — deliveries are accepted and journaled, fan-out suppressed")
+	}
+
 	return &hookserver.Deps{
+		Muted:     muted,
 		Filter:    filter,
 		Journal:   journal,
 		Debouncer: debouncer,

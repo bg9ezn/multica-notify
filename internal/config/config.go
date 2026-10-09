@@ -88,6 +88,12 @@ type TemplateConfig struct {
 }
 
 type Config struct {
+	// Enabled is the master switch. false = the bridge still accepts and
+	// journals hook deliveries (answering the host promptly) but suppresses
+	// all fan-out — a global mute. Channels are still built and validated so
+	// config typos surface at startup or reload, not when re-enabled.
+	// Defaults to true.
+	Enabled            *bool                     `yaml:"enabled,omitempty"`
 	Listen             string                    `yaml:"listen"`
 	TLS                *TLSSection               `yaml:"tls,omitempty"`
 	SigningSecretEnv   string                    `yaml:"signing_secret_env"`
@@ -96,6 +102,11 @@ type Config struct {
 	IdempotencyJournal string                    `yaml:"idempotency_journal"`
 	Channels           []ChannelConfig           `yaml:"channels"`
 	Templates          map[string]TemplateConfig `yaml:"templates,omitempty"`
+}
+
+// IsEnabled reports whether notifications should fan out.
+func (c *Config) IsEnabled() bool {
+	return c.Enabled == nil || *c.Enabled
 }
 
 // Load reads, defaults, and validates the configuration file.
@@ -116,6 +127,10 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) ApplyDefaults() {
+	if c.Enabled == nil {
+		t := true
+		c.Enabled = &t
+	}
 	if c.Listen == "" {
 		c.Listen = ":9097"
 	}

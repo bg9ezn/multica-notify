@@ -29,6 +29,10 @@ const (
 
 // Deps is the mutable half of the handler, rebuilt atomically on SIGHUP.
 type Deps struct {
+	// Muted is the master switch (config top-level enabled: false).
+	// Deliveries are still verified, journaled and filtered; fan-out is
+	// suppressed. Channel state stays built so unmuting needs no rebuild.
+	Muted     bool
 	Filter    *event.Filter
 	Journal   *event.Journal
 	Debouncer *event.Debouncer
@@ -39,6 +43,10 @@ type Deps struct {
 
 // dispatch fans one accepted event out to every channel.
 func (d *Deps) dispatch(ctx context.Context, e *event.Event) {
+	if d.Muted {
+		d.Logger.Debug("notification suppressed (muted)", "event_type", e.EventType, "subject", e.Ref())
+		return
+	}
 	msg, err := d.Renderer.Render(e)
 	if err != nil {
 		d.Logger.Error("render notification", "event_type", e.EventType, "error", err)

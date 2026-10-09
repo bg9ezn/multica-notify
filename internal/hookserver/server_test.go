@@ -345,6 +345,30 @@ func TestHandlerEventDeliveryWithoutDeliveryID(t *testing.T) {
 	}
 }
 
+func TestHandlerMutedSuppressesFanOut(t *testing.T) {
+	cap := &capturingChannel{name: "cap"}
+	h := newTestHandler(t, cap)
+	deps := h.loadDeps()
+	deps.Muted = true
+	h.UpdateDeps(deps)
+
+	if rec := postSigned(t, h, issueStatusBody("d-mute", "in_review"), nil); rec.Code != http.StatusOK {
+		t.Fatalf("muted delivery: %d, want 200 (host must not retry)", rec.Code)
+	}
+	time.Sleep(60 * time.Millisecond)
+	if cap.count() != 0 {
+		t.Fatalf("muted bridge delivered anyway: %+v", cap.last())
+	}
+
+	// Unmute (SIGHUP reload path) -> events flow again.
+	deps.Muted = false
+	h.UpdateDeps(deps)
+	if rec := postSigned(t, h, issueStatusBody("d-unmute", "in_review"), nil); rec.Code != http.StatusOK {
+		t.Fatalf("unmuted delivery: %d", rec.Code)
+	}
+	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
+}
+
 func TestHandlerRejectsNonPostAndUnknownPaths(t *testing.T) {
 	h := newTestHandler(t)
 

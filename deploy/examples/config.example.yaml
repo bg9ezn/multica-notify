@@ -2,6 +2,12 @@
 # Copy to /etc/multica-notify/config.yaml and edit. Every value shown is the
 # shipped default unless commented.
 
+# Master switch (default true). false = global mute: the bridge still
+# accepts and journals hook deliveries but suppresses all fan-out. Takes
+# effect live via SIGHUP reload. Per-channel 'enabled' gates individual
+# channels beneath this.
+enabled: true
+
 listen: ":9097"
 
 # TLS is required for production: Multica's manifest validator only accepts

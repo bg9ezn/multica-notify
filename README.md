@@ -99,6 +99,7 @@ See [`deploy/examples/config.example.yaml`](./deploy/examples/config.example.yam
 
 | Field | Default | Meaning |
 |---|---|---|
+| `enabled` | `true` | **Master switch.** `false` = global mute: deliveries are still accepted and journaled, fan-out suppressed (live via SIGHUP) |
 | `listen` | `:9097` | hook server address |
 | `tls` | — | cert/key; required in production (Multica only accepts https transports) |
 | `filters.issue_statuses` | `[in_review, done]` | which issue statuses notify; empty = all |
