@@ -1,0 +1,40 @@
+# Optional companion stack for multica-notify, for hosts with Docker.
+# On hosts without Docker (e.g. a bare Raspberry Pi OS/Ubuntu box), deploy
+# ntfy from its official arm64 package and apprise-api from a pip/git
+# checkout under systemd instead — the bridge only speaks HTTP to both.
+#
+# Everything binds to loopback: only the bridge (and an SSH tunnel / reverse
+# proxy, if desired) needs to reach these.
+services:
+  apprise:
+    image: caronc/apprise:latest
+    container_name: multica-notify-apprise
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - apprise-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: multica-notify-ntfy
+    restart: unless-stopped
+    command: ["serve"]
+    ports:
+      - "127.0.0.1:8086:80"
+    volumes:
+      - ntfy-cache:/var/cache/ntfy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  apprise-config:
+  ntfy-cache:

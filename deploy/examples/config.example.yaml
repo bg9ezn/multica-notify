@@ -1,0 +1,65 @@
+# multica-notify example configuration.
+# Copy to /etc/multica-notify/config.yaml and edit. Every value shown is the
+# shipped default unless commented.
+
+listen: ":9097"
+
+# TLS is required for production: Multica's manifest validator only accepts
+# https:// transport URLs. Generate with deploy/tls/gen-certs.sh.
+# Omit both lines for plain HTTP (tests / loopback experiments only).
+tls:
+  cert: /etc/multica-notify/tls/tls.crt
+  key: /etc/multica-notify/tls/tls.key
+
+# Name of the env var carrying the signing secret (shown once next to the
+# install token when an admin rotates the plugin token in Multica).
+signing_secret_env: MULTICA_NOTIFY_SIGNING_SECRET
+
+filters:
+  # Only these issue statuses notify. Empty list = every status change.
+  issue_statuses: [in_review, done]
+  on_task_completed: false
+  on_task_failed: true
+  # Drop task.failed deliveries Multica marked retry_pending (intermediate
+  # attempts that may still recover).
+  skip_retrying_tasks: true
+
+debounce:
+  # Rapid flips on the same issue collapse into one notification carrying the
+  # latest state, sent when the window closes.
+  window: 30s
+
+# Delivery-id journal for cross-restart dedupe (at-most-once semantics).
+idempotency_journal: /var/lib/multica-notify/journal.jsonl
+
+channels:
+  # Apprise: one entry per apprise-api config key. Apprise itself fans out to
+  # WeCom / DingTalk / Feishu / Telegram / email / ... (128+ services).
+  - name: wecom-bot
+    type: apprise
+    options:
+      url: http://127.0.0.1:8000/notify/wecom
+
+  # ntfy: personal phone push via a self-hosted server (privacy-first) or
+  # ntfy.sh. Subscribe to the topic in the ntfy app.
+  - name: phone
+    type: ntfy
+    options:
+      server: http://127.0.0.1:8086
+      topic: multica
+      # token: tk_...        # only when the server requires auth
+      # priority: 4          # 1..5, default 3
+
+  # Generic webhook for debugging or future integrations. Empty url
+  # disables the channel.
+  - name: debug
+    type: webhook
+    options:
+      url: ""
+
+# Optional template overrides (text/template against the decoded event).
+# Known sets: issue_status, task, heartbeat.
+# templates:
+#   issue_status:
+#     title: "[Ops] {{ref .}} -> {{.Issue.Status}}"
+#     body: "{{.Issue.Title}}"

@@ -1,0 +1,12 @@
+# Dependencies for `make test-integration`. Minimal by design: one real ntfy.
+services:
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    command: ["serve"]
+    ports:
+      - "127.0.0.1:8085:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/v1/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

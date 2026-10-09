@@ -1,0 +1,25 @@
+[Unit]
+Description=multica-notify event notification bridge for Multica
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=multica-notify
+Group=multica-notify
+EnvironmentFile=/etc/multica-notify/env
+ExecStart=/usr/local/bin/multica-notify -config /etc/multica-notify/config.yaml
+Restart=on-failure
+RestartSec=3
+
+# Hardening: the bridge needs its TLS key, its journal directory, nothing else.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/multica-notify
+RestrictAddressFamilies=AF_INET AF_INET6
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
