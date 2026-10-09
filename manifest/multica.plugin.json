@@ -9,6 +9,7 @@
     "url": "https://github.com/bg9ezn"
   },
   "scopes": [
+    "issues:read",
     "net:BRIDGE_HOST_PLACEHOLDER"
   ],
   "contributes": {
