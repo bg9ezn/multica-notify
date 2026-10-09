@@ -10,51 +10,57 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - Cobra-based command structure: `multica-notify serve` (run the bridge),
   `init-config <path>` (generate the annotated configuration, `--force` to
-  overwrite), `test` (send one message to every enabled channel from the
-  current configuration, with per-channel results; exercises the channel
-  egress only — no hook server, journal or signing secret involved).
-  `test` accepts `--channel <name>` (repeatable, config-order report),
-  `--title` / `--message` (custom text) and `--type
-  info|success|warning|error` — the type rides the message to receivers
-  (apprise notify type; ntfy priority/tags escalate for warning/error) and
-  is also available to the webhook channel's payload.
-  `version`, plus root `--version`. Help output and shell completion come
-  with it. **Breaking:** the service entry point moved from
+  overwrite), `init-plugin --bridge-host <host>` (generate the plugin
+  manifest with transport URLs and `net:` scope filled in; the standalone
+  `manifest/` directory was removed — the template is embedded),
+  `test` (send one message to every enabled channel from the current
+  configuration — channel egress only, no hook server, journal or signing
+  secret involved), `version`, plus root `--version`. Help output and shell
+  completion come with it. **Breaking:** the service entry point moved from
   `multica-notify -config ...` to `multica-notify serve -c ...` — update the
   systemd `ExecStart` (the shipped unit already does).
-- Log level control and optional file logging on `serve`: `-q/--quiet`
-  (errors only), default info, `-v/--verbose` (debug), and `--log-file`
-  (mirror logs into a file; default off — stderr only). Built on log/slog.
-
-### Added
-
-- `-init-config <path>` command: generates the annotated example
-  configuration from an embedded template — always in lockstep with the
-  binary's supported fields (drift-guarded by test) — refusing to overwrite
-  an existing file unless `-force`. Release-artifact users no longer need
-  the repository to obtain a starting config.
+- `test` accepts `--channel <name>` (repeatable, config-order report,
+  unknown names rejected with the configured list), `--title` / `--message`
+  (custom text) and `--type info|success|warning|error` — the type rides the
+  message to receivers (apprise notify type; ntfy priority/tags escalate for
+  warning/error) and is included in the webhook payload.
+- Event simulation on `test`: `--event
+  issue.status_changed|task.completed|task.failed` (with `--status`,
+  `--retry-pending`) runs a synthetic Multica-shaped delivery through the
+  configured filter pipeline and reports the decision — filtered events
+  exit 0 with the reason; `--ignore-filters` delivers anyway.
+- `-init-config <path>`: generates the annotated example configuration from
+  an embedded template — always in lockstep with the binary's supported
+  fields (drift-guarded by test) — refusing to overwrite an existing file
+  unless `-force`. Release-artifact users no longer need the repository to
+  obtain a starting config.
 - README: release-artifact identification table (which file fits which
   device, sha256 verification, darwin unsigned note) and a related-projects
   section (Multica contract references, Apprise/apprise-api, ntfy).
 - Deploy guide: download-a-release option with checksum verification —
   building from source is now optional.
 - AGENTS.md for coding agents: contract facts, architecture, commands,
-  conventions and release policy.
+  conventions, release policy, changelog and bilingual-README discipline.
 
 ### Changed
 
-- The standalone example file was removed in favor of the embedded template
-  served by `-init-config`.
+- Log level control and optional file logging on `serve`: `-q/--quiet`
+  (errors only), default info, `-v/--verbose` (debug), and `--log-file`
+  (mirror logs into a file; default off — stderr only). Built on log/slog.
 - CI integration tests install ntfy from its GitHub release binary instead
   of pulling `binwiederhier/ntfy:latest` from Docker Hub — shared runner IPs
   trip the unauthenticated pull rate limit; the compose test dependency is
   pinned to v2.29.0 (the release verified against the suite).
+- The standalone example file and manifest directory were removed in favor
+  of the embedded templates (`-init-config`, `init-plugin`).
 - Related-projects guidance clarified: Shoutrrr ships as a Go library/CLI
   only (no HTTP API) and is not an integration path for this bridge; a
   receiver without Apprise coverage is served by a thin native adapter
   instead.
 - Local runtime configuration files (`config.yaml`, `.env`, ...) are
   git-ignored; the shipped template remains the embedded example.
+- Dependency policy amended: runtime dependencies are now stdlib +
+  `gopkg.in/yaml.v3` + `spf13/cobra`.
 
 ## [0.1.0] - 2026-10-10
 

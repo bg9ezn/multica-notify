@@ -78,10 +78,12 @@ run: ## Generate a dev config (first run) and start the bridge with it
 	bin/$(BINARY) -config config.dev.yaml
 
 .PHONY: manifest-pack
-manifest-pack: ## Zip the plugin manifest for upload into Multica
+manifest-pack: ## Generate + zip the plugin manifest for upload into Multica
+	@test -n "$(BRIDGE_HOST)" || { echo "usage: make manifest-pack BRIDGE_HOST=<host-or-ip>"; exit 1; }
 	mkdir -p dist
-	cd manifest && zip -q ../dist/multica.plugin.json.zip multica.plugin.json && cd ..
-	@echo "wrote dist/multica.plugin.json.zip (replace BRIDGE_HOST_PLACEHOLDER before installing)"
+	bin/$(BINARY) init-plugin --bridge-host "$(BRIDGE_HOST)" --out dist/multica.plugin.json
+	cd dist && zip -q multica.plugin.json.zip multica.plugin.json && cd ..
+	@echo "wrote dist/multica.plugin.json(.zip) for host $(BRIDGE_HOST)"
 
 .PHONY: verify
 verify: lint build test ## Everything CI runs on a push

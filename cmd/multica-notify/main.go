@@ -48,7 +48,7 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:      true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
-	root.AddCommand(newServeCmd(), newInitConfigCmd(), newTestCmd(), newVersionCmd())
+	root.AddCommand(newServeCmd(), newInitConfigCmd(), newInitPluginCmd(), newTestCmd(), newVersionCmd())
 	return root
 }
 

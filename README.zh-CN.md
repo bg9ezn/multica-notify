@@ -67,7 +67,11 @@ go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
    MULTICA_PLUGIN_DEV_ORIGINS=https://<桥host>:9097
    MULTICA_PLUGIN_DEV_CA=/path/to/ca.crt
    ```
-3. **发布并安装插件**：上传 bundle（`POST /plugins/packages`，管理员），在工作区安装（预览 → 同意 → 安装）。使用 [`manifest/multica.plugin.json`](./manifest/multica.plugin.json)，把 `BRIDGE_HOST_PLACEHOLDER` 换成你的桥地址。轮换插件令牌时会一次性显示签名密钥——写入 `/etc/multica-notify/env` 的 `MULTICA_NOTIFY_SIGNING_SECRET`。
+3. **发布并安装插件**：先生成 manifest，上传（`POST /plugins/packages`，管理员），在工作区安装（预览 → 同意 → 安装）：
+   ```bash
+   ./bin/multica-notify init-plugin --bridge-host <桥地址> --out multica.plugin.json
+   ```
+   轮换插件令牌时会一次性显示签名密钥——写入 `/etc/multica-notify/env` 的 `MULTICA_NOTIFY_SIGNING_SECRET`。
 
 完整操作手册（含 flag 文件格式与 API 调用）见 [`docs/deploy-selfhost.md`](./docs/deploy-selfhost.md)。
 

@@ -79,11 +79,13 @@ Three server-side prerequisites, all operator-controlled:
    MULTICA_PLUGIN_DEV_ORIGINS=https://<bridge-host>:9097
    MULTICA_PLUGIN_DEV_CA=/path/to/ca.crt
    ```
-3. **Publish and install the plugin**: upload the bundle
-   (`POST /plugins/packages`, admin), then install it in the workspace
-   (preview → consent → install). Use
-   [`manifest/multica.plugin.json`](./manifest/multica.plugin.json) with
-   `BRIDGE_HOST_PLACEHOLDER` replaced by your bridge host. Rotating the
+3. **Publish and install the plugin**: generate the manifest with your
+   bridge host, upload it (`POST /api/workspaces/{id}/plugins/packages`),
+   then install it in the workspace (preview → consent → install):
+   ```bash
+   ./bin/multica-notify init-plugin --bridge-host <bridge-host> --out multica.plugin.json
+   ```
+   Rotating the
    plugin token shows the signing secret once — put it in
    `/etc/multica-notify/env` as `MULTICA_NOTIFY_SIGNING_SECRET`.
 
