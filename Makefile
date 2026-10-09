@@ -4,6 +4,10 @@ VERSION_FLAG := -X github.com/bg9ezn/multica-notify/internal/version.Value=$(VER
 # Release artifacts are stripped; dev builds keep symbols so panics stay readable.
 RELEASE_LDFLAGS := -s -w $(VERSION_FLAG)
 COMPOSE_TEST := deploy/compose/test.yml
+# Release targets: os/arch pairs, extensible one-line-per-platform.
+# Raspberry Pi (64-bit OS) is linux/arm64 — the same artifact as any
+# 64-bit Linux; 32-bit Raspbian would need "linux/arm" with GOARM=7.
+PLATFORMS := linux/amd64 linux/arm64 windows/amd64 windows/arm64
 
 .PHONY: help
 help: ## List available targets
@@ -42,11 +46,16 @@ lint: ## gofmt (no diff allowed) + go vet
 	go vet ./...
 
 .PHONY: package
-package: ## Cross-compile linux/arm64 + amd64 release artifacts into dist/
+package: ## Cross-compile release artifacts for all PLATFORMS into dist/
 	mkdir -p dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o dist/$(BINARY)-$(VERSION)-linux-arm64 ./cmd/$(BINARY)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o dist/$(BINARY)-$(VERSION)-linux-amd64 ./cmd/$(BINARY)
-	cd dist && sha256sum $(BINARY)-$(VERSION)-linux-* > sha256sums.txt
+	@set -e; for p in $(PLATFORMS); do \
+		os=$${p%/*}; arch=$${p#*/}; \
+		ext=$$([ "$$os" = "windows" ] && echo .exe || echo ""); \
+		echo "building $$os/$$arch"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" \
+			-o "dist/$(BINARY)-$(VERSION)-$$os-$$arch$$ext" ./cmd/$(BINARY); \
+	done
+	cd dist && sha256sum $(BINARY)-$(VERSION)-* > sha256sums.txt
 	@echo "artifacts in dist/:"
 	@ls -l dist/
 

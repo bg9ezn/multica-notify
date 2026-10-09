@@ -4,14 +4,24 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-10-10
+
+### Added
+
+- Per-channel `enabled` flag — keep a channel declared but dormant.
+- Top-level master switch (`enabled: false` = global mute: deliveries still
+  accepted and journaled, fan-out suppressed; live via SIGHUP reload).
+- Release artifacts now cover `linux/amd64`, `linux/arm64` (Raspberry Pi and
+  any 64-bit Linux), `windows/amd64` and `windows/arm64`.
 
 ### Changed
 
-- Version resolution now falls back through Go build info (module version
-  from `go install`, then embedded VCS revision) instead of reporting a bare
-  `dev` for binaries built outside the Makefile; dev builds keep debug symbols
-  (only release artifacts are stripped).
+- Version resolution falls back through Go build info (module version from
+  `go install`, then embedded VCS revision with dirty marker) instead of a
+  bare `dev`; dev builds keep debug symbols — only release artifacts are
+  stripped.
+- Tests migrated to testify (assert/require, Eventually/Never async
+  assertions).
 
 ## [0.1.0] - 2026-10-10
 
