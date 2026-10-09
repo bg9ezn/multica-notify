@@ -113,6 +113,23 @@ Generate the fully annotated reference any time with
 Channel options are documented in the example config; unknown options are
 ignored, unknown channel types fail at startup with the known list.
 
+## Command-line reference
+
+Bare `multica-notify` (no arguments) prints the help. Exit codes: `0`
+success; `1` error — for `test`, also when any tested channel fails.
+
+| Command | Purpose | Flags |
+|---|---|---|
+| `serve` | run the bridge (long-running; Ctrl-C for a clean shutdown) | `-c/--config PATH` (default search: `/etc/multica-notify/config.yaml`, then `./config.yaml`) · `-q/--quiet` repeatable (errors only) · `-v/--verbose` repeatable (debug) · `--log-file PATH` (mirror logs; default off) |
+| `init-config <path>` | write the annotated example configuration | `-f/--force` overwrite existing |
+| `init-plugin --bridge-host <host>` | generate `multica.plugin.json` | `--out PATH` · `-f/--force` |
+| `test` | send one message to every enabled channel; exit 1 if any fails | `-c` · `--channel NAME` (repeatable) · `--title TEXT` · `--message TEXT` · `--type info\|success\|warning\|error` · `--event issue.status_changed\|task.completed\|task.failed` (filter dry-run) · `--status STATUS` · `--retry-pending` · `--ignore-filters` |
+| `version` | print the version | |
+
+Environment variables: `MULTICA_NOTIFY_SIGNING_SECRET` (bridge, `serve`); on
+the Multica backend side `MULTICA_FEATURE_FLAGS_FILE`,
+`MULTICA_PLUGIN_DEV_ORIGINS` and `MULTICA_PLUGIN_DEV_CA` (see *Wiring*).
+
 ## Security model
 
 The hook contract's four disciplines, all implemented in
@@ -130,6 +147,10 @@ notifications by design — choose channels accordingly (self-hosted ntfy keeps
 them on your network).
 
 ## Development
+
+**For AI coding agents:** [AGENTS.md](./AGENTS.md) condenses everything an
+agent needs — contract facts, architecture, commands, conventions, release
+policy. This README aims to be self-sufficient for the same purpose.
 
 ```bash
 make help             # list targets

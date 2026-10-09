@@ -101,6 +101,16 @@ func newTestCmd() *cobra.Command {
 			"    --ignore-filters to deliver regardless.\n\n" +
 			"To test the full signed path from a Multica-shaped delivery, use\n" +
 			"mocksender instead.",
+		Example: `  # probe every enabled channel
+  multica-notify test -c config.yaml
+
+  # only WeCom, warning style, custom text
+  multica-notify test -c config.yaml --channel wecom-bot --type warning \
+    --title "Channel check" --message "hello from the bridge"
+
+  # simulate a task failure marked retry_pending through the filter pipeline
+  # (exit 0 + FILTERED report = skip_retrying_tasks is doing its job)
+  multica-notify test --event task.failed --retry-pending`,
 		RunE: runTest(&configPath, &onlyChannels, &title, &body, &notifyType,
 			&eventType, &eventStatus, &retryPending, &ignoreFilters),
 	}

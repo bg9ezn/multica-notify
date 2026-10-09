@@ -93,6 +93,20 @@ go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
 
 各通道选项见示例配置；未知选项被忽略，未知通道类型启动即报错并列出可用类型。
 
+## 命令行参考
+
+不带参数运行 `multica-notify` 会打印帮助。退出码：`0` 成功；`1` 出错——对 `test` 而言也包括任一被测通道失败。
+
+| 命令 | 用途 | 标志 |
+|---|---|---|
+| `serve` | 运行桥（常驻；Ctrl-C 优雅退出） | `-c/--config PATH`（默认查找 `/etc/multica-notify/config.yaml`、`./config.yaml`）· `-q/--quiet` 可重复（仅错误）· `-v/--verbose` 可重复（debug）· `--log-file PATH`（镜像日志，默认关） |
+| `init-config <path>` | 生成带注释的示例配置 | `-f/--force` 覆盖已有文件 |
+| `init-plugin --bridge-host <host>` | 生成 `multica.plugin.json` | `--out PATH` · `-f/--force` |
+| `test` | 向每个已启用通道发一条测试消息；任一失败则 exit 1 | `-c` · `--channel 名称`（可重复）· `--title 文本` · `--message 文本` · `--type info\|success\|warning\|error` · `--event issue.status_changed\|task.completed\|task.failed`（过滤管线干跑）· `--status 状态` · `--retry-pending` · `--ignore-filters` |
+| `version` | 打印版本 | |
+
+环境变量：`MULTICA_NOTIFY_SIGNING_SECRET`（桥，`serve` 用）；Multica 后端侧的 `MULTICA_FEATURE_FLAGS_FILE`、`MULTICA_PLUGIN_DEV_ORIGINS`、`MULTICA_PLUGIN_DEV_CA`（见「接入自托管 Multica」）。
+
 ## 安全模型
 
 hook 契约的四条纪律，全部实现在 [`internal/hookserver/verify.go`](./internal/hookserver/verify.go)：
@@ -105,6 +119,8 @@ hook 契约的四条纪律，全部实现在 [`internal/hookserver/verify.go`](.
 桥只持有签名密钥，只拨出你配置的通道，只存投递 id。issue 标题会随通知发出——请据此选择通道（自托管 ntfy 可让内容不出内网）。
 
 ## 开发
+
+**面向 AI 编码代理**：[AGENTS.md](./AGENTS.md) 浓缩了代理所需的全部信息——契约事实、架构、命令、约定、发布策略。本 README 亦以自足为目标。
 
 ```bash
 make help             # 列出全部目标

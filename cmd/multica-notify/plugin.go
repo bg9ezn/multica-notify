@@ -17,9 +17,13 @@ func newInitPluginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init-plugin --bridge-host <host>",
 		Short: "Generate the Multica plugin manifest for this bridge",
-		Long: "Writes multica.plugin.json with every BRIDGE_HOST_PLACEHOLDER filled\n" +
-			"in - transport URLs, net: scope. Publish the generated file to Multica\n" +
-			"afterwards (workspace Settings -> Plugins, or the packages API).",
+		Long: "Writes multica.plugin.json with every BRIDGE_HOST placeholder filled\n" +
+			"in - the three transport URLs and the net: egress scope.\n\n" +
+			"Publish the generated file to Multica afterwards (workspace Settings\n" +
+			"-> Plugins, or POST /api/workspaces/{id}/plugins/packages), install\n" +
+			"it, then rotate the plugin token to obtain the signing secret.",
+		Example: `  multica-notify init-plugin --bridge-host 192.168.0.231 --out multica.plugin.json
+  make manifest-pack BRIDGE_HOST=192.168.0.231   # same, plus zip`,
 		Args: cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := manifest.Write(out, bridgeHost, force); err != nil {

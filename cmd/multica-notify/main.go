@@ -43,10 +43,20 @@ func newRootCmd() *cobra.Command {
 		Use:   "multica-notify",
 		Short: "Event notification bridge for self-hosted Multica",
 		Long: "Receives signed Multica plugin-hook deliveries and fans the rendered\n" +
-			"notifications out to the configured channels (apprise, ntfy, webhook).",
+			"notifications out to the configured channels (apprise, ntfy, webhook).\n\n" +
+			"Typical workflow:\n" +
+			"  init-config  generate and edit the configuration\n" +
+			"  init-plugin  generate the Multica plugin manifest\n" +
+			"  serve        run the bridge (long-running)\n" +
+			"  test         probe every enabled channel",
 		Version:           version.Get(),
 		SilenceUsage:      true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Bare invocation prints the help with exit 0 - deterministic and
+			// friendly; unknown subcommands still error above.
+			return cmd.Help()
+		},
 	}
 	root.AddCommand(newServeCmd(), newInitConfigCmd(), newInitPluginCmd(), newTestCmd(), newVersionCmd())
 	return root
@@ -82,8 +92,12 @@ func newInitConfigCmd() *cobra.Command {
 		Use:   "init-config <path>",
 		Short: "Write the annotated example configuration to path",
 		Long: "Writes the example configuration embedded in this binary — it is always\n" +
-			"in lockstep with the supported fields. An existing file is kept unless\n" +
-			"--force is given.",
+			"in lockstep with the supported fields (a unit test guards the drift).\n\n" +
+			"An existing file is never overwritten unless --force. After writing,\n" +
+			"edit the channels and set MULTICA_NOTIFY_SIGNING_SECRET (see the\n" +
+			"README \"Configuration\" section).",
+		Example: `  multica-notify init-config config.yaml
+  multica-notify init-config --force -c /etc/multica-notify/config.yaml`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if err := config.InitConfig(args[0], force); err != nil {
@@ -121,9 +135,18 @@ func newServeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Run the notification bridge (the long-running mode)",
-		Long: "Starts the HTTPS hook server and fans accepted deliveries out to the\n" +
-			"configured channels. Logs go to stderr; --log-file additionally mirrors\n" +
-			"them into a file (disabled by default).",
+		Long: "Starts the HTTPS hook server on the configured listen address and\n" +
+			"fans accepted deliveries out to the configured channels.\n\n" +
+			"Logging goes to stderr; -q raises the threshold to errors only, -v\n" +
+			"lowers it to debug; --log-file additionally mirrors everything into a\n" +
+			"file (disabled by default).\n\n" +
+			"Exit codes: 0 on clean shutdown (SIGINT/SIGTERM), 1 on startup or\n" +
+			"runtime failure.",
+		Example: `  # production (systemd runs this)
+  multica-notify serve -c /etc/multica-notify/config.yaml
+
+  # verbose local run with a log mirror
+  multica-notify serve -c config.yaml -v --log-file bridge.log`,
 		RunE: runServe(&configPath, &logFile, &quiet, &verbose),
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "",
