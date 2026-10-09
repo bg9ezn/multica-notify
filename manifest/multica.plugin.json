@@ -1,0 +1,57 @@
+{
+  "manifest_version": 1,
+  "key": "io.github.bg9ezn.multica-notify",
+  "name": "Multica Notify",
+  "description": "Fans signed issue/task events out to Apprise, ntfy, or any webhook. Requires the companion multica-notify bridge service; see https://github.com/bg9ezn/multica-notify.",
+  "version": "0.1.0",
+  "author": {
+    "name": "bg9ezn",
+    "url": "https://github.com/bg9ezn"
+  },
+  "scopes": [
+    "net:BRIDGE_HOST_PLACEHOLDER"
+  ],
+  "contributes": {
+    "hooks": [
+      {
+        "key": "issue_status",
+        "name": "Issue status notifications",
+        "description": "Receives issue.status_changed deliveries and forwards the ones matching the bridge filter to the configured channels.",
+        "triggers": ["event"],
+        "events": ["issue.status_changed"],
+        "transport": {
+          "type": "http",
+          "url": "https://BRIDGE_HOST_PLACEHOLDER:9097/hooks/issue-status"
+        },
+        "timeout_ms": 8000
+      },
+      {
+        "key": "task_lifecycle",
+        "name": "Task lifecycle notifications",
+        "description": "Receives task.completed / task.failed deliveries and forwards them per the bridge filter.",
+        "triggers": ["event"],
+        "events": ["task.completed", "task.failed"],
+        "transport": {
+          "type": "http",
+          "url": "https://BRIDGE_HOST_PLACEHOLDER:9097/hooks/task"
+        },
+        "timeout_ms": 8000
+      },
+      {
+        "key": "heartbeat",
+        "name": "Daily heartbeat",
+        "description": "Scheduled no-op delivery used to prove the whole path (Multica -> bridge -> channels) is alive.",
+        "triggers": ["schedule"],
+        "schedule": {
+          "cron": "0 9 * * *",
+          "timezone": "Asia/Shanghai"
+        },
+        "transport": {
+          "type": "http",
+          "url": "https://BRIDGE_HOST_PLACEHOLDER:9097/hooks/heartbeat"
+        },
+        "timeout_ms": 8000
+      }
+    ]
+  }
+}
