@@ -291,6 +291,60 @@ func TestHandlerDebounceSendsLatestOnly(t *testing.T) {
 	}
 }
 
+func TestHandlerEventDeliveryWithoutDeliveryID(t *testing.T) {
+	cap := &capturingChannel{name: "cap"}
+	h := newTestHandler(t, cap)
+	deps := h.loadDeps()
+	deps.Journal = mustJournal(t)
+	h.UpdateDeps(deps)
+
+	// Real event deliveries carry no delivery_id (schedule-only field
+	// host-side). A host retry regenerates invocation_id but repeats
+	// occurred_at, so the composite key must dedupe them.
+	body := func(invocation string) []byte {
+		b, _ := json.Marshal(map[string]any{
+			"hook_key": "issue_status", "trigger": "event",
+			"event_type":    "issue.status_changed",
+			"invocation_id": invocation, "attempt": 1,
+			"workspace_id": "ws-1", "installation_id": "inst-1",
+			"issue_id":    "i-77",
+			"occurred_at": "2026-10-10T02:00:00Z",
+			"input": map[string]any{
+				"issue":          map[string]any{"id": "i-77", "number": 8, "title": "No-id event", "status": "in_review"},
+				"status_changed": true,
+			},
+		})
+		return b
+	}
+
+	send := func(invocation string) *httptest.ResponseRecorder {
+		b := body(invocation)
+		req := httptest.NewRequest(http.MethodPost, "/hooks/issue_status", bytes.NewReader(b))
+		stamp := strconv.FormatInt(time.Now().Unix(), 10)
+		req.Header.Set("x-multica-timestamp", stamp)
+		req.Header.Set("x-multica-signature", signBody(stamp, b))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := send("inv-a"); rec.Code != http.StatusOK {
+		t.Fatalf("first: %d %s", rec.Code, rec.Body.String())
+	}
+	rec := send("inv-b") // fresh invocation_id, same logical event
+	if rec.Code != http.StatusOK {
+		t.Fatalf("retry: %d %s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"duplicate":true`)) {
+		t.Fatalf("event retry not deduped: %s", rec.Body.String())
+	}
+	waitFor(t, 2*time.Second, func() bool { return cap.count() > 0 })
+	time.Sleep(30 * time.Millisecond)
+	if cap.count() != 1 {
+		t.Fatalf("delivered %d times, want 1", cap.count())
+	}
+}
+
 func TestHandlerRejectsNonPostAndUnknownPaths(t *testing.T) {
 	h := newTestHandler(t)
 

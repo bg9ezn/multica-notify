@@ -138,25 +138,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": fmt.Sprintf("parse envelope: %v", err)})
 		return
 	}
-	if env.DeliveryID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "delivery_id is required"})
-		return
-	}
 
-	// Idempotency: a host retry after a lost response re-sends the same
-	// delivery_id. Recognized duplicates answer OK without re-notifying.
-	if d.Journal != nil && d.Journal.Seen(env.DeliveryID) {
-		writeJSON(w, http.StatusOK, map[string]any{"received": env.DeliveryID, "duplicate": true})
+	// Idempotency: a host retry of the same logical delivery must not notify
+	// twice. Schedule deliveries repeat their delivery_id; event deliveries
+	// arrive without one, so the identity falls back to the composite event
+	// key (see event.Envelope.IDKey).
+	idemKey := env.IDKey()
+	if d.Journal.Seen(idemKey) {
+		writeJSON(w, http.StatusOK, map[string]any{"received": idemKey, "duplicate": true})
 		return
 	}
-	if err := d.Journal.Record(env.DeliveryID); err != nil {
+	if err := d.Journal.Record(idemKey); err != nil {
 		d.Logger.Warn("journal record failed; continuing with degraded dedupe", "error", err)
 	}
 
 	e := event.Decode(env)
 	if !d.Filter.Allow(e) {
 		d.Logger.Debug("delivery filtered", "event_type", e.EventType, "reason", d.Filter.SkipReason(e))
-		writeJSON(w, http.StatusOK, map[string]any{"received": env.DeliveryID, "skipped": d.Filter.SkipReason(e)})
+		writeJSON(w, http.StatusOK, map[string]any{"received": idemKey, "skipped": d.Filter.SkipReason(e)})
 		return
 	}
 
@@ -166,9 +165,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		accepted = true
 	default:
 		// Bounded queue full: drop like the host's dispatcher does, loudly.
-		d.Logger.Error("send queue full, dropping delivery", "delivery_id", env.DeliveryID)
+		d.Logger.Error("send queue full, dropping delivery", "idem_key", idemKey)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"received": env.DeliveryID, "queued": accepted})
+	writeJSON(w, http.StatusOK, map[string]any{"received": idemKey, "queued": accepted})
 }
 
 // deliver routes one accepted event: issue status through the debounce

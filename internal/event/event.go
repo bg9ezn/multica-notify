@@ -4,9 +4,12 @@
 package event
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Event type strings as published by Multica's plugin event bridge
@@ -38,18 +41,26 @@ type Schedule struct {
 }
 
 // Envelope is the JSON body Multica POSTs to a hook transport URL
-// (plugincontract HookInvocation). Only the fields multica-notify consumes
-// are declared; anything else in the payload is ignored on purpose, so
-// upstream payload growth is not a breaking change (plan risk R3).
+// (service/plugin_hook.go hookRequestBody). Only the fields multica-notify
+// consumes are declared; anything else in the payload is ignored on purpose,
+// so upstream payload growth is not a breaking change (plan risk R3).
+//
+// Note delivery_id is SCHEDULE-only on the wire (json omitempty host-side):
+// event deliveries arrive without one. Use IDKey() for idempotency, never the
+// raw field.
 type Envelope struct {
+	Version      int             `json:"version"`
+	InvocationID string          `json:"invocation_id"`
+	DeliveryID   string          `json:"delivery_id"`
+	Attempt      int             `json:"attempt"`
+	OccurredAt   time.Time       `json:"occurred_at"`
 	HookKey      string          `json:"hook_key"`
 	Trigger      string          `json:"trigger"`
 	EventType    string          `json:"event_type"`
-	DeliveryID   string          `json:"delivery_id"`
-	InvocationID string          `json:"invocation_id"`
-	Attempt      int             `json:"attempt"`
-	Actor        Actor           `json:"actor"`
+	WorkspaceID  string          `json:"workspace_id"`
+	Installation string          `json:"installation_id"`
 	IssueID      string          `json:"issue_id"`
+	Actor        Actor           `json:"actor"`
 	Input        json.RawMessage `json:"input"`
 	Schedule     *Schedule       `json:"schedule"`
 }
@@ -109,6 +120,25 @@ func Decode(env Envelope) *Event {
 		}
 	}
 	return e
+}
+
+// IDKey is the idempotency identity of one logical delivery.
+//
+// Schedule deliveries carry a stable delivery_id across retries. Event
+// deliveries do not (the field is schedule-only host-side), and their
+// invocation_id changes per HTTP attempt — so the stable identity of a
+// redelivered event is what happened: type, workspace, subject, occurrence
+// time. Host retries of the same event reproduce those; genuinely distinct
+// events do not.
+func (e *Envelope) IDKey() string {
+	if e.DeliveryID != "" {
+		return "d:" + e.DeliveryID
+	}
+	sum := sha256.Sum256([]byte(strings.Join([]string{
+		e.EventType, e.WorkspaceID, e.Installation, e.IssueID,
+		e.OccurredAt.UTC().Format(time.RFC3339Nano),
+	}, "\x00")))
+	return "e:" + hex.EncodeToString(sum[:16])
 }
 
 // Ref renders a short human reference for the event's subject: "#12" when the
