@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Friendly CLI help: bare `multica-notify` prints the help with exit 0,
+  every command carries copy-pasteable examples (`--help`), `serve`
+  documents logging semantics and exit codes, and `init-config` gained
+  `-f/--force` as a shorthand.
+- README (EN+ZH): command-line reference section (commands, flags, exit
+  codes, environment variables) and an explicit AI-agent pointer to
+  AGENTS.md — the README is now self-sufficient for both humans and agents.
+
 ## [0.6.1] - 2026-10-10
 
 ### Added
