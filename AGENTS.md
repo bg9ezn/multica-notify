@@ -76,6 +76,10 @@ oracle.
 - Commit messages: English, conventional prefix (`feat`/`fix`/`chore`/`docs`/
   `build`/`test`/`ci`), body as Problem / Cause / Solution / Leftovers when
   non-trivial; DCO sign-off (`git commit -s`) enforced on PRs.
+- Changelog discipline: every user-observable change (features, fixes, config
+  surface, docs that affect users) adds an entry under CHANGELOG
+  `[Unreleased]` in the same commit; internal refactors need not. At release
+  time `[Unreleased]` becomes the version section.
 - Tests live next to their packages; every adapter is tested against
   `httptest`; cross-platform changes are verified with a local
   cross-compile before tagging.
