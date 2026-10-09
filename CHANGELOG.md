@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-10
+
 ### Added
 
 - Friendly CLI help: bare `multica-notify` prints the help with exit 0,
@@ -16,7 +18,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   codes, environment variables) and an explicit AI-agent pointer to
   AGENTS.md — the README is now self-sufficient for both humans and agents.
 
-## [0.6.1] - 2026-10-10
+## [0.6.0] - 2026-10-10
 
 ### Added
 
