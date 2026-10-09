@@ -7,7 +7,10 @@ COMPOSE_TEST := deploy/compose/test.yml
 # Release targets: os/arch pairs, extensible one-line-per-platform.
 # Raspberry Pi (64-bit OS) is linux/arm64 — the same artifact as any
 # 64-bit Linux; 32-bit Raspbian would need "linux/arm" with GOARM=7.
-PLATFORMS := linux/amd64 linux/arm64 windows/amd64 windows/arm64
+# linux/loong64 covers Loongson (LoongArch64, Go 1.19+ first-class port).
+# darwin binaries are unsigned — macOS Gatekeeper needs
+# `xattr -d com.apple.quarantine <binary>` on first run.
+PLATFORMS := linux/amd64 linux/arm64 linux/loong64 windows/amd64 windows/arm64 darwin/amd64 darwin/arm64
 
 .PHONY: help
 help: ## List available targets

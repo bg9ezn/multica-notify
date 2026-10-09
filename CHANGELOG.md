@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Release matrix extended to `linux/loong64` (Loongson) and `darwin/amd64`
+  (Intel Mac) + `darwin/arm64` (Apple Silicon); darwin binaries are unsigned
+  (Gatekeeper: `xattr -d com.apple.quarantine` on first run).
+- Versioning policy documented in the README.
+
 ## [0.2.0] - 2026-10-10
 
 ### Added

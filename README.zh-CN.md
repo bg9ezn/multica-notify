@@ -132,6 +132,14 @@ internal/httpx       共享的带重试 JSON POST
 - [`deploy/tls/gen-certs.sh`](./deploy/tls/gen-certs.sh) — 内网来源所需的本地 CA + 服务证书
 - [`docs/deploy-selfhost.md`](./docs/deploy-selfhost.md) — 端到端操作手册
 
+## 版本规则
+
+SemVer（`v主.次.补`），`v` 前缀打 tag；每个 tag 自动触发全平台（Makefile 的 `PLATFORMS`）产物发布。
+
+- **补丁位（PATCH）**——向后兼容的 bug 修复、测试、文档、构建修正；不新增配置面、不改行为。
+- **次版本（MINOR）**——新功能或新配置面（通道、开关、平台）；0.x 阶段的常态。
+- **主版本（MAJOR）**——破坏性变更（配置结构、hook 契约用法）；1.0 之前预计不会出现。
+
 ## 许可证
 
 [Apache-2.0](./LICENSE)。欢迎贡献——提交请加签署（`git commit -s`），CI 强制 DCO。

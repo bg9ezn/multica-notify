@@ -162,6 +162,18 @@ channel-isolation while apprise is down).
 - [`deploy/tls/gen-certs.sh`](./deploy/tls/gen-certs.sh) — local CA + server cert for private origins
 - [`docs/deploy-selfhost.md`](./docs/deploy-selfhost.md) — end-to-end walkthrough
 
+## Versioning
+
+SemVer (`vMAJOR.MINOR.PATCH`), tagged with a `v` prefix; every tag triggers a
+release with artifacts for every `PLATFORMS` entry in the Makefile.
+
+- **PATCH** — backwards-compatible bug fixes, tests, docs, build/packaging
+  corrections. No new config surface, no behavior additions.
+- **MINOR** — new functionality or config surface (channels, switches,
+  platforms). The norm while in 0.x.
+- **MAJOR** — breaking changes (config schema, hook contract usage). Not
+  expected before 1.0.
+
 ## License
 
 [Apache-2.0](./LICENSE). Contributions welcome — sign off your commits
