@@ -67,8 +67,11 @@ package: ## Cross-compile release artifacts for all PLATFORMS into dist/
 	@ls -l dist/
 
 .PHONY: run
-run: ## Run the bridge with the example config (plain HTTP, no TLS)
-	go run ./cmd/$(BINARY) -config deploy/examples/config.example.yaml
+run: ## Generate a dev config (first run) and start the bridge with it
+	@mkdir -p bin
+	@go build -trimpath -o bin/$(BINARY) ./cmd/$(BINARY)
+	@test -f config.dev.yaml || bin/$(BINARY) -init-config config.dev.yaml
+	bin/$(BINARY) -config config.dev.yaml
 
 .PHONY: manifest-pack
 manifest-pack: ## Zip the plugin manifest for upload into Multica

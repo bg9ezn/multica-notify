@@ -25,15 +25,30 @@ import (
 
 func main() {
 	var (
-		configPath  string
-		showVersion bool
+		configPath    string
+		showVersion   bool
+		initConfig    string
+		forceInitConf bool
 	)
 	flag.StringVar(&configPath, "config", "",
 		"path to config.yaml (defaults: /etc/multica-notify/config.yaml, ./config.yaml)")
+	flag.StringVar(&initConfig, "init-config", "",
+		"write the annotated example config to path and exit (existing file kept unless -force)")
+	flag.BoolVar(&forceInitConf, "force", false,
+		"with -init-config: overwrite an existing file")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.Parse()
 	if showVersion {
 		fmt.Println("multica-notify", version.Get())
+		return
+	}
+	if initConfig != "" {
+		if err := config.InitConfig(initConfig, forceInitConf); err != nil {
+			fmt.Fprintln(os.Stderr, "multica-notify:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("wrote %s\nnext steps: edit the channels, set MULTICA_NOTIFY_SIGNING_SECRET, then run with -config %s\n",
+			initConfig, initConfig)
 		return
 	}
 

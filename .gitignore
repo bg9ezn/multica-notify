@@ -18,6 +18,7 @@ journal*.jsonl
 # never belong in git. The shipped template is deploy/examples/config.example.yaml.
 /config.yaml
 /config.*.yaml
+config.dev.yaml
 *.local.yaml
 .env
 .env.*

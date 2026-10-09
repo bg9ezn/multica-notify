@@ -59,7 +59,8 @@ sudo chown -R multica-notify:multica-notify /etc/multica-notify/tls
 ## 3. Bridge configuration and service
 
 ```bash
-sudo install -m 0644 deploy/examples/config.example.yaml /etc/multica-notify/config.yaml
+sudo /usr/local/bin/multica-notify -init-config /etc/multica-notify/config.yaml
+sudo chown multica-notify:multica-notify /etc/multica-notify/config.yaml
 sudoedit /etc/multica-notify/config.yaml   # set listen/tls/channels
 sudo install -m 0644 deploy/systemd/multica-notify.service /etc/systemd/system/
 sudo systemctl daemon-reload

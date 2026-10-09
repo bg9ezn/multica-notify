@@ -1,21 +1,16 @@
-# multica-notify example configuration.
-# Copy to /etc/multica-notify/config.yaml and edit. Every value shown is the
-# shipped default unless commented.
-
-# Master switch (default true). false = global mute: the bridge still
-# accepts and journals hook deliveries but suppresses all fan-out. Takes
-# effect live via SIGHUP reload. Per-channel 'enabled' gates individual
-# channels beneath this.
-enabled: true
+# multica-notify configuration.
+# Generate a fresh copy at any time:  multica-notify -init-config <path>
+#
+# Every field below shows its default unless commented otherwise.
 
 listen: ":9097"
 
-# TLS is required for production: Multica's manifest validator only accepts
-# https:// transport URLs. Generate with deploy/tls/gen-certs.sh.
-# Omit both lines for plain HTTP (tests / loopback experiments only).
-tls:
-  cert: /etc/multica-notify/tls/tls.crt
-  key: /etc/multica-notify/tls/tls.key
+# TLS is REQUIRED in production: Multica's manifest validator only accepts
+# https:// transport URLs. Generate cert/key with deploy/tls/gen-certs.sh and
+# uncomment. Leave commented for loopback experiments (plain HTTP).
+# tls:
+#   cert: /etc/multica-notify/tls/tls.crt
+#   key: /etc/multica-notify/tls/tls.key
 
 # Name of the env var carrying the signing secret (shown once next to the
 # install token when an admin rotates the plugin token in Multica).
@@ -26,7 +21,7 @@ filters:
   issue_statuses: [in_review, done]
   on_task_completed: false
   on_task_failed: true
-  # Drop task.failed deliveries Multica marked retry_pending (intermediate
+  # Drop task.failed deliveries Multica marks retry_pending (intermediate
   # attempts that may still recover).
   skip_retrying_tasks: true
 
@@ -41,6 +36,7 @@ idempotency_journal: /var/lib/multica-notify/journal.jsonl
 channels:
   # Every channel supports `enabled` (default true). Set false to keep one
   # declared but dormant without deleting its options.
+  #
   # Apprise: one entry per apprise-api config key. Apprise itself fans out to
   # WeCom / DingTalk / Feishu / Telegram / email / ... (128+ services).
   - name: wecom-bot

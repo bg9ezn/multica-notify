@@ -44,17 +44,8 @@ channel never changes this codebase.
 # 1. Build (Go 1.22+)
 make build
 
-# 2. Minimal config (see deploy/examples/config.example.yaml)
-cat > config.yaml <<'EOF'
-listen: "127.0.0.1:9097"
-idempotency_journal: data/journal.jsonl
-channels:
-  - name: phone
-    type: ntfy
-    options:
-      server: http://127.0.0.1:8086   # your self-hosted ntfy
-      topic: multica
-EOF
+# 2. Generate the annotated config, then edit the channels
+./bin/multica-notify -init-config config.yaml
 
 # 3. Run (plain HTTP for now; production must be HTTPS, see below)
 MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify -config config.yaml
@@ -94,8 +85,9 @@ Full walkthrough (including flag file format and API calls) is in
 
 ## Configuration
 
-See [`deploy/examples/config.example.yaml`](./deploy/examples/config.example.yaml)
-— every field is annotated. Highlights:
+Generate the fully annotated reference any time with
+`./bin/multica-notify -init-config <path>` (template:
+`internal/config/example.yaml`). Highlights:
 
 | Field | Default | Meaning |
 |---|---|---|

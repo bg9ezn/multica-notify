@@ -8,6 +8,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `-init-config <path>` command: generates the annotated example
+  configuration from an embedded template — always in lockstep with the
+  binary's supported fields (drift-guarded by test) — refusing to overwrite
+  an existing file unless `-force`. Release-artifact users no longer need
+  the repository to obtain a starting config.
 - README: release-artifact identification table (which file fits which
   device, sha256 verification, darwin unsigned note) and a related-projects
   section (Multica contract references, Apprise/apprise-api, ntfy).
@@ -18,13 +23,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The standalone example file was removed in favor of the embedded template
+  served by `-init-config`.
 - Related-projects guidance clarified: Shoutrrr ships as a Go library/CLI
   only (no HTTP API) and is not an integration path for this bridge; a
   receiver without Apprise coverage is served by a thin native adapter
   instead.
 - Local runtime configuration files (`config.yaml`, `.env`, ...) are
-  git-ignored; the shipped template remains
-  `deploy/examples/config.example.yaml`.
+  git-ignored; the shipped template remains the embedded example.
 
 ## [0.1.0] - 2026-10-10
 

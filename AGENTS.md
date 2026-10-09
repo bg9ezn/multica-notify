@@ -87,6 +87,9 @@ oracle.
 - Tests live next to their packages; every adapter is tested against
   `httptest`; cross-platform changes are verified with a local
   cross-compile before tagging.
+- `internal/config/example.yaml` is embedded (go:embed) and served by
+  `-init-config`; `TestEmbeddedExampleIsValid` guards drift — update the
+  example in the same commit as config field changes.
 
 ## Versioning and release
 

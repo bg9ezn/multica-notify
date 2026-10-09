@@ -37,17 +37,8 @@ multica-notify 桥（Go 单二进制）
 # 1. 构建（Go 1.22+）
 make build
 
-# 2. 最小配置（完整注释版见 deploy/examples/config.example.yaml）
-cat > config.yaml <<'EOF'
-listen: "127.0.0.1:9097"
-idempotency_journal: data/journal.jsonl
-channels:
-  - name: phone
-    type: ntfy
-    options:
-      server: http://127.0.0.1:8086   # 自托管 ntfy
-      topic: multica
-EOF
+# 2. 生成带注释的配置，然后编辑通道
+./bin/multica-notify -init-config config.yaml
 
 # 3. 启动（先跑通 HTTP；生产必须 HTTPS，见下文）
 MULTICA_NOTIFY_SIGNING_SECRET=whsec_... ./bin/multica-notify -config config.yaml
@@ -75,7 +66,7 @@ go run ./cmd/mocksender -url http://127.0.0.1:9097/hooks/issue-status \
 
 ## 配置
 
-见 [`deploy/examples/config.example.yaml`](./deploy/examples/config.example.yaml)，每个字段都有注释。要点：
+随时用 `./bin/multica-notify -init-config <路径>` 生成带完整注释的参考配置（模板：`internal/config/example.yaml`）。要点：
 
 | 字段 | 默认 | 含义 |
 |---|---|---|
