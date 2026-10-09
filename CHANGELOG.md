@@ -8,17 +8,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Cobra-based command structure: `multica-notify serve` (run the bridge),
-  `init-config <path>` (generate the annotated configuration, `--force` to
-  overwrite), `init-plugin --bridge-host <host>` (generate the plugin
-  manifest with transport URLs and `net:` scope filled in; the standalone
-  `manifest/` directory was removed — the template is embedded),
-  `test` (send one message to every enabled channel from the current
-  configuration — channel egress only, no hook server, journal or signing
-  secret involved), `version`, plus root `--version`. Help output and shell
-  completion come with it. **Breaking:** the service entry point moved from
-  `multica-notify -config ...` to `multica-notify serve -c ...` — update the
-  systemd `ExecStart` (the shipped unit already does).
+- Release-time changelog audit: before tagging, every user-observable commit
+  since the previous tag must be represented under `[Unreleased]` — same-
+  commit entries are the ideal, this boundary audit is the safety net
+  (documented in AGENTS.md).
+
+## [0.6.0] - 2026-10-10
+
+### Added
+
 - `test` accepts `--channel <name>` (repeatable, config-order report,
   unknown names rejected with the configured list), `--title` / `--message`
   (custom text) and `--type info|success|warning|error` — the type rides the
@@ -29,36 +27,47 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `--retry-pending`) runs a synthetic Multica-shaped delivery through the
   configured filter pipeline and reports the decision — filtered events
   exit 0 with the reason; `--ignore-filters` delivers anyway.
-- `-init-config <path>`: generates the annotated example configuration from
-  an embedded template — always in lockstep with the binary's supported
-  fields (drift-guarded by test) — refusing to overwrite an existing file
-  unless `-force`. Release-artifact users no longer need the repository to
-  obtain a starting config.
-- README: release-artifact identification table (which file fits which
-  device, sha256 verification, darwin unsigned note) and a related-projects
-  section (Multica contract references, Apprise/apprise-api, ntfy).
-- Deploy guide: download-a-release option with checksum verification —
-  building from source is now optional.
-- AGENTS.md for coding agents: contract facts, architecture, commands,
-  conventions, release policy, changelog and bilingual-README discipline.
+- `init-plugin --bridge-host <host>` command: generates the Multica plugin
+  manifest (transport URLs and `net:` scope filled in) from the embedded
+  template; `make manifest-pack BRIDGE_HOST=...` zips it for upload. The
+  standalone `manifest/` directory was removed — the template is embedded.
 
-### Changed
+## [0.5.0] - 2026-10-10
 
-- Log level control and optional file logging on `serve`: `-q/--quiet`
-  (errors only), default info, `-v/--verbose` (debug), and `--log-file`
-  (mirror logs into a file; default off — stderr only). Built on log/slog.
+### Added
+
+- `test` command: sends one test message to every enabled channel from the
+  current configuration and reports per-channel results (exit 1 on any
+  failure). Exercises the channel egress only — no hook server, journal or
+  signing secret involved; mocksender remains the tool for the full signed
+  path.
+
+### Fixed
+
 - CI integration tests install ntfy from its GitHub release binary instead
   of pulling `binwiederhier/ntfy:latest` from Docker Hub — shared runner IPs
   trip the unauthenticated pull rate limit; the compose test dependency is
   pinned to v2.29.0 (the release verified against the suite).
-- The standalone example file and manifest directory were removed in favor
-  of the embedded templates (`-init-config`, `init-plugin`).
-- Related-projects guidance clarified: Shoutrrr ships as a Go library/CLI
-  only (no HTTP API) and is not an integration path for this bridge; a
-  receiver without Apprise coverage is served by a thin native adapter
-  instead.
-- Local runtime configuration files (`config.yaml`, `.env`, ...) are
-  git-ignored; the shipped template remains the embedded example.
+
+## [0.4.0] - 2026-10-10
+
+### Added
+
+- Cobra-based command structure: `multica-notify serve` (run the bridge) and
+  `init-config <path>` (generate the annotated configuration, `--force` to
+  overwrite). Help output and shell completion come with it. **Breaking:**
+  the service entry point moved from `multica-notify -config ...` to
+  `multica-notify serve -c ...` — update the systemd `ExecStart` (the
+  shipped unit already does).
+- Log level control and optional file logging on `serve`: `-q/--quiet`
+  (errors only), default info, `-v/--verbose` (debug), and `--log-file`
+  (mirror logs into a file; default off — stderr only). Built on log/slog.
+- README: related-projects section (Multica contract references,
+  Apprise/apprise-api, ntfy) and AGENTS.md additions: changelog discipline,
+  bilingual-README rule, shoutrrr deferral decision, CLI surface.
+
+### Changed
+
 - Dependency policy amended: runtime dependencies are now stdlib +
   `gopkg.in/yaml.v3` + `spf13/cobra`.
 
