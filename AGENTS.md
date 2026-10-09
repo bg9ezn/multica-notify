@@ -106,13 +106,13 @@ oracle.
   register in `NewRegistry`, unit-test against `httptest` (success, 5xx
   retry, 4xx no-retry). Keep it thin: receiver-specific knowledge belongs in
   Apprise.
-  - Deliberately deferred: a `shoutrrr` channel type (in-process multi-
-    service fan-out via github.com/containrrr/shoutrrr — Telegram, Pushover,
-    Discord, Slack, SMTP without a Python apprise-api). Evaluated and
-    rejected for now: it breaks the zero-runtime-dependency rule, and its
-    unique coverage (Pushover/Discord/Slack) has no demand while apprise-api
-    already serves the fleet. Revisit only on real demand, a dependency-
-    policy revision, or apprise-api maintenance trouble.
+  - Ruled out: a `shoutrrr` channel type. Shoutrrr ships only as a Go
+    library and a CLI — there is no official HTTP API service (unlike
+    apprise-api). The library form breaks the zero-runtime-dependency rule;
+    the CLI form adds an external tool plus subprocess orchestration with
+    none of apprise-api's service qualities (config keys, stateful configs,
+    health endpoint). If a receiver lacks Apprise coverage, add a thin
+    native adapter for it instead (the way ntfy was done).
 - **Platform**: one entry in Makefile `PLATFORMS`; verify with a local
   cross-compile; note any Gatekeeper/GOARM caveats in the comment.
 - **Event behavior**: extend `event.Filter` + a message template set; decode

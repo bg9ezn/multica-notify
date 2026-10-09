@@ -188,7 +188,7 @@ linked (CGO disabled) — download, `chmod +x`, run. Darwin builds are unsigned:
 | Project | Relationship |
 |---|---|
 | [Multica](https://github.com/multica-ai/multica) | The self-hosted agent platform this bridge extends. The hook contract implemented here is Multica's published plugin contract; see upstream [RFC #1964](https://github.com/multica-ai/multica/issues/1964) (outbound webhooks) and the official `triage-notify` example — this project's signature handling follows that oracle. |
-| [Apprise](https://github.com/caronc/apprise) / [apprise-api](https://github.com/caronc/apprise-api) | The 128+ service fan-out layer (WeCom, DingTalk, Feishu, Telegram, email, ...). The bridge speaks the apprise-api HTTP protocol; if you prefer a native-Go alternative, see [Shoutrrr](https://github.com/containrrr/shoutrrr). |
+| [Apprise](https://github.com/caronc/apprise) / [apprise-api](https://github.com/caronc/apprise-api) | The 128+ service fan-out layer (WeCom, DingTalk, Feishu, Telegram, email, ...). The bridge speaks the apprise-api HTTP protocol. ([Shoutrrr](https://github.com/containrrr/shoutrrr) is the Go-library equivalent in this ecosystem — library/CLI only, no HTTP API — which is why it is not an integration path here.) |
 | [ntfy](https://github.com/binwiederhier/ntfy) | Self-hosted HTTP push to your phone — the recommended personal channel. [Gotify](https://github.com/gotify/server) is a comparable alternative. |
 
 ## Versioning

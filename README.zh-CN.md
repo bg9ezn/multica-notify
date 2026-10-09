@@ -155,7 +155,7 @@ internal/httpx       共享的带重试 JSON POST
 | 项目 | 关系 |
 |---|---|
 | [Multica](https://github.com/multica-ai/multica) | 本桥所扩展的自托管智能体平台。这里实现的 hook 契约即 Multica 已发布的插件契约；参见上游 [RFC #1964](https://github.com/multica-ai/multica/issues/1964)（外发 webhook）与官方 `triage-notify` 示例——本项目的签名处理以该示例为基准。 |
-| [Apprise](https://github.com/caronc/apprise) / [apprise-api](https://github.com/caronc/apprise-api) | 128+ 服务的扇出层（企微、钉钉、飞书、Telegram、邮件……）。桥走 apprise-api 的 HTTP 协议；若偏好纯 Go 替代可看 [Shoutrrr](https://github.com/containrrr/shoutrrr)。 |
+| [Apprise](https://github.com/caronc/apprise) / [apprise-api](https://github.com/caronc/apprise-api) | 128+ 服务的扇出层（企微、钉钉、飞书、Telegram、邮件……）。桥走 apprise-api 的 HTTP 协议。（[Shoutrrr](https://github.com/containrrr/shoutrrr) 是本生态中的 Go 库对应物——仅有库/CLI 形态、无 HTTP API，因此不作为本桥的集成路径。） |
 | [ntfy](https://github.com/binwiederhier/ntfy) | 自托管 HTTP 手机推送——推荐的个人通道。同类可选：[Gotify](https://github.com/gotify/server)。 |
 
 ## 版本规则

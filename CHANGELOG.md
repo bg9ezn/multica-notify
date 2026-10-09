@@ -18,6 +18,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Related-projects guidance clarified: Shoutrrr ships as a Go library/CLI
+  only (no HTTP API) and is not an integration path for this bridge; a
+  receiver without Apprise coverage is served by a thin native adapter
+  instead.
 - Local runtime configuration files (`config.yaml`, `.env`, ...) are
   git-ignored; the shipped template remains
   `deploy/examples/config.example.yaml`.
