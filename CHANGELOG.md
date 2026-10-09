@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Version resolution now falls back through Go build info (module version
+  from `go install`, then embedded VCS revision) instead of reporting a bare
+  `dev` for binaries built outside the Makefile; dev builds keep debug symbols
+  (only release artifacts are stripped).
+
 ## [0.1.0] - 2026-10-10
 
 ### Added

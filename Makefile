@@ -1,6 +1,8 @@
 BINARY := multica-notify
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X main.version=$(VERSION)
+VERSION_FLAG := -X github.com/bg9ezn/multica-notify/internal/version.Value=$(VERSION)
+# Release artifacts are stripped; dev builds keep symbols so panics stay readable.
+RELEASE_LDFLAGS := -s -w $(VERSION_FLAG)
 COMPOSE_TEST := deploy/compose/test.yml
 
 .PHONY: help
@@ -13,14 +15,14 @@ clean: ## Remove build outputs and test caches
 	go clean -testcache
 
 .PHONY: build
-build: ## Build the bridge binary for the host platform
+build: ## Build the bridge binary for the host platform (unstripped, version stamped)
 	mkdir -p bin
-	go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/$(BINARY)
+	go build -trimpath -ldflags "$(VERSION_FLAG)" -o bin/$(BINARY) ./cmd/$(BINARY)
 
 .PHONY: mocksender
 mocksender: ## Build the signed test-event sender
 	mkdir -p bin
-	go build -trimpath -ldflags "$(LDFLAGS)" -o bin/mocksender ./cmd/mocksender
+	go build -trimpath -o bin/mocksender ./cmd/mocksender
 
 .PHONY: test
 test: ## Run unit tests (race detector on)
@@ -42,8 +44,8 @@ lint: ## gofmt (no diff allowed) + go vet
 .PHONY: package
 package: ## Cross-compile linux/arm64 + amd64 release artifacts into dist/
 	mkdir -p dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-$(VERSION)-linux-arm64 ./cmd/$(BINARY)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-$(VERSION)-linux-amd64 ./cmd/$(BINARY)
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o dist/$(BINARY)-$(VERSION)-linux-arm64 ./cmd/$(BINARY)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o dist/$(BINARY)-$(VERSION)-linux-amd64 ./cmd/$(BINARY)
 	cd dist && sha256sum $(BINARY)-$(VERSION)-linux-* > sha256sums.txt
 	@echo "artifacts in dist/:"
 	@ls -l dist/

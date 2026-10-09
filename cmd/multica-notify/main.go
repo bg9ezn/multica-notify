@@ -20,9 +20,8 @@ import (
 	"github.com/bg9ezn/multica-notify/internal/event"
 	"github.com/bg9ezn/multica-notify/internal/hookserver"
 	"github.com/bg9ezn/multica-notify/internal/message"
+	"github.com/bg9ezn/multica-notify/internal/version"
 )
-
-var version = "dev"
 
 func main() {
 	var (
@@ -34,7 +33,7 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.Parse()
 	if showVersion {
-		fmt.Println("multica-notify", version)
+		fmt.Println("multica-notify", version.Get())
 		return
 	}
 
@@ -89,7 +88,7 @@ func main() {
 		logger.Info("multica-notify listening",
 			"addr", cfg.Listen, "tls", cfg.TLS != nil,
 			"channels", len(cur.Channels), "debounce", time.Duration(cfg.Debounce.Window),
-			"version", version)
+			"version", version.Get())
 		if cfg.TLS != nil {
 			serveErr <- srv.ListenAndServeTLS(cfg.TLS.Cert, cfg.TLS.Key)
 		} else {
