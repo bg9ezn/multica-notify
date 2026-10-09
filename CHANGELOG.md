@@ -4,58 +4,37 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Added
-
-- Release matrix extended to `linux/riscv64` and `linux/arm` (built with
-  GOARM=6, named `armv6` — one artifact covers every 32-bit ARM board:
-  Pi Zero/1 through Pi 2/3 on a 32-bit OS).
-
-## [0.2.1] - 2026-10-10
-
-### Added
-
-- Release matrix extended to `linux/loong64` (Loongson) and `darwin/amd64`
-  (Intel Mac) + `darwin/arm64` (Apple Silicon); darwin binaries are unsigned
-  (Gatekeeper: `xattr -d com.apple.quarantine` on first run).
-- Versioning policy documented in the README.
-
-## [0.2.0] - 2026-10-10
-
-### Added
-
-- Per-channel `enabled` flag — keep a channel declared but dormant.
-- Top-level master switch (`enabled: false` = global mute: deliveries still
-  accepted and journaled, fan-out suppressed; live via SIGHUP reload).
-- Release artifacts now cover `linux/amd64`, `linux/arm64` (Raspberry Pi and
-  any 64-bit Linux), `windows/amd64` and `windows/arm64`.
-
-### Changed
-
-- Version resolution falls back through Go build info (module version from
-  `go install`, then embedded VCS revision with dirty marker) instead of a
-  bare `dev`; dev builds keep debug symbols — only release artifacts are
-  stripped.
-- Tests migrated to testify (assert/require, Eventually/Never async
-  assertions).
-
 ## [0.1.0] - 2026-10-10
 
+Initial stable release.
+
 ### Added
 
-- Hook server verifying Multica plugin-hook deliveries
-  (HMAC-SHA256, ±5 min timestamp window, constant-time compare, in-window
-  signature replay protection).
-- Event pipeline: issue-status filtering, latest-state debounce, delivery-id
-  idempotency journal.
-- Notification channels: `apprise` (apprise-api HTTP), `ntfy` (JSON publish),
-  `webhook` (generic JSON POST).
-- Multica plugin manifest (`manifest/multica.plugin.json`) subscribing to
-  `issue.status_changed`, `task.completed`, `task.failed`, plus a daily
-  schedule heartbeat.
-- Deployment assets: systemd unit, TLS local-CA script, compose files for
-  apprise-api/ntfy, example configuration.
-- Tooling: `cmd/mocksender` (signed test-event sender), Makefile
-  (clean/build/test/test-integration/lint/package/run), GitHub Actions CI and
-  release workflows.
+- Hook server verifying Multica plugin-hook deliveries (HMAC-SHA256, ±5 min
+  timestamp window, constant-time compare, in-window signature replay
+  protection).
+- Event pipeline: issue-status filtering, latest-state debounce (window
+  closes on the newest state), idempotency journal covering both scheduled
+  delivery ids and the composite event key.
+- Notification channels — `apprise` (apprise-api HTTP), `ntfy` (JSON
+  publish), `webhook` (generic JSON POST) — each with an `enabled` flag,
+  plus a top-level master switch (global mute: deliveries still accepted
+  and journaled, fan-out suppressed, live via SIGHUP reload).
+- Plugin manifest subscribing to `issue.status_changed`, `task.completed`,
+  `task.failed`, and a daily schedule heartbeat.
+- Deployment assets: hardened systemd unit, TLS local-CA script, compose
+  files for apprise-api/ntfy, annotated example configuration.
+- Release matrix across nine platforms — linux amd64/arm64/loong64/riscv64/
+  armv6, windows amd64/arm64, darwin amd64/arm64 — with sha256 checksums and
+  a tag-triggered release workflow.
+- Version resolution via ldflags injection with Go build-info fallback
+  (module version, VCS revision + dirty marker); dev builds keep debug
+  symbols.
+- Versioning policy (documented in the README) and tooling: Makefile
+  one-command targets, `mocksender` signed test-event sender, bilingual
+  README, self-host deployment guide, AGENTS.md.
+- Test suites: testify-based unit tests (signature rejection matrix, debounce
+  semantics, journal restarts, adapters) and integration tests against a real
+  ntfy (signed deliveries, replay rejection, channel isolation).
+
+[0.1.0]: https://github.com/bg9ezn/multica-notify/releases/tag/v0.1.0
