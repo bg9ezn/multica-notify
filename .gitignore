@@ -1,0 +1,23 @@
+# Build artifacts
+/bin/
+/dist/
+
+# Local runtime state (journal, certs, example data)
+/data/
+*.key
+*.crt
+*.csr
+*.srl
+deploy/tls/out/
+
+# Journal files wherever they land
+journal*.jsonl
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Go
+*.test
+coverage.out

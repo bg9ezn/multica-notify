@@ -1,0 +1,20 @@
+# Normalize line endings: this repo builds and deploys on Linux (Makefile,
+# shell scripts, systemd units are CRLF-intolerant), so every text file is
+# stored and checked out with LF everywhere.
+* text=auto eol=lf
+
+# Explicitly LF even if someone flips the global autocrlf setting.
+Makefile eol=lf
+*.sh eol=lf
+*.service eol=lf
+*.yml eol=lf
+*.yaml eol=lf
+*.md eol=lf
+*.go eol=lf
+*.mod eol=lf
+*.sum eol=lf
+*.json eol=lf
+
+# Binaries, just in case artifacts ever land in-tree.
+*.png binary
+*.zip binary

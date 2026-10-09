@@ -1,0 +1,13 @@
+multica-notify
+Copyright 2026 bg9ezn
+
+This product includes software developed by bg9ezn and contributors.
+
+Multica is a product of Index Labs (Hong Kong) Limited. multica-notify is an
+unofficial community project and is not affiliated with, endorsed by, or
+sponsored by Index Labs. "Multica" is used only to describe interoperability
+through Multica's published plugin contract.
+
+This product depends on the Apprise notification library (MIT License,
+Copyright Jason A. Donenfeld and others / caronc) and ntfy (Apache License
+2.0, Copyright Philipp C. Heckel) over HTTP, without distributing either.
