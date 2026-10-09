@@ -348,9 +348,13 @@ func TestHandlerEventDeliveryWithoutDeliveryID(t *testing.T) {
 func TestHandlerMutedSuppressesFanOut(t *testing.T) {
 	cap := &capturingChannel{name: "cap"}
 	h := newTestHandler(t, cap)
-	deps := h.loadDeps()
-	deps.Muted = true
-	h.UpdateDeps(deps)
+	base := h.loadDeps()
+
+	// Swap in rebuilt copies (like the SIGHUP reload path does) rather than
+	// mutating the live struct: a worker may be reading it concurrently.
+	mutedDeps := *base
+	mutedDeps.Muted = true
+	h.UpdateDeps(&mutedDeps)
 
 	if rec := postSigned(t, h, issueStatusBody("d-mute", "in_review"), nil); rec.Code != http.StatusOK {
 		t.Fatalf("muted delivery: %d, want 200 (host must not retry)", rec.Code)
@@ -361,8 +365,9 @@ func TestHandlerMutedSuppressesFanOut(t *testing.T) {
 	}
 
 	// Unmute (SIGHUP reload path) -> events flow again.
-	deps.Muted = false
-	h.UpdateDeps(deps)
+	unmutedDeps := *base
+	unmutedDeps.Muted = false
+	h.UpdateDeps(&unmutedDeps)
 	if rec := postSigned(t, h, issueStatusBody("d-unmute", "in_review"), nil); rec.Code != http.StatusOK {
 		t.Fatalf("unmuted delivery: %d", rec.Code)
 	}
