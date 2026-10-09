@@ -65,9 +65,18 @@ type DebounceConfig struct {
 // ChannelConfig is one outgoing notification target. Options are consumed by
 // the channel implementation named by Type; the core never inspects them.
 type ChannelConfig struct {
-	Name    string            `yaml:"name"`
-	Type    string            `yaml:"type"`
+	Name string `yaml:"name"`
+	Type string `yaml:"type"`
+	// Enabled defaults to true. Set false to keep a channel declared but
+	// dormant — e.g. apprise-api not deployed yet — without deleting its
+	// options.
+	Enabled *bool             `yaml:"enabled,omitempty"`
 	Options map[string]string `yaml:"options"`
+}
+
+// IsEnabled reports whether the channel should be built.
+func (c ChannelConfig) IsEnabled() bool {
+	return c.Enabled == nil || *c.Enabled
 }
 
 // TemplateConfig overrides one built-in template set ("issue_status", "task",

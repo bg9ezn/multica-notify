@@ -33,10 +33,13 @@ debounce:
 idempotency_journal: /var/lib/multica-notify/journal.jsonl
 
 channels:
+  # Every channel supports `enabled` (default true). Set false to keep one
+  # declared but dormant without deleting its options.
   # Apprise: one entry per apprise-api config key. Apprise itself fans out to
   # WeCom / DingTalk / Feishu / Telegram / email / ... (128+ services).
   - name: wecom-bot
     type: apprise
+    enabled: true
     options:
       url: http://127.0.0.1:8000/notify/wecom
 
@@ -44,16 +47,17 @@ channels:
   # ntfy.sh. Subscribe to the topic in the ntfy app.
   - name: phone
     type: ntfy
+    enabled: true
     options:
       server: http://127.0.0.1:8086
       topic: multica
       # token: tk_...        # only when the server requires auth
       # priority: 4          # 1..5, default 3
 
-  # Generic webhook for debugging or future integrations. Empty url
-  # disables the channel.
+  # Generic webhook for debugging or future integrations.
   - name: debug
     type: webhook
+    enabled: false
     options:
       url: ""
 

@@ -165,13 +165,17 @@ func buildDeps(cfg *config.Config, registry *channel.Registry, logger *slog.Logg
 
 	var channels []channel.Channel
 	for _, cc := range cfg.Channels {
+		if !cc.IsEnabled() {
+			logger.Info("channel disabled", "channel", cc.Name, "type", cc.Type, "reason", "enabled: false")
+			continue
+		}
 		ch, err := registry.Build(cc.Type, cc.Name, cc.Options)
 		if err != nil {
 			logger.Error("build channel", "channel", cc.Name, "type", cc.Type, "error", err)
 			os.Exit(1)
 		}
 		if ch == nil {
-			logger.Info("channel disabled", "channel", cc.Name, "type", cc.Type)
+			logger.Info("channel disabled", "channel", cc.Name, "type", cc.Type, "reason", "adapter criteria (e.g. empty url)")
 			continue
 		}
 		channels = append(channels, ch)

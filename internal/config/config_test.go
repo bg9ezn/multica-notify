@@ -109,3 +109,26 @@ channels:
 		t.Fatal("invalid duration accepted")
 	}
 }
+
+func TestChannelEnabledDefaultsTrueAndHonorsFalse(t *testing.T) {
+	path := write(t, `
+channels:
+  - name: on
+    type: ntfy
+    options: {topic: t}
+  - name: off
+    type: ntfy
+    enabled: false
+    options: {topic: t}
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Channels[0].IsEnabled() {
+		t.Error("channel without enabled should default to true")
+	}
+	if cfg.Channels[1].IsEnabled() {
+		t.Error("enabled: false not honored")
+	}
+}
