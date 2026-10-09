@@ -21,7 +21,7 @@ lives in Apprise — never in this codebase.
 | Integration tests (real ntfy) | `make test-integration` (needs docker) |
 | Build / lint / package | `make build` / `make lint` / `make package` |
 | Single test | `go test -race -count=1 -run TestName ./internal/hookserver/` |
-| CLI surface | `multica-notify serve \| init-config \| test \| version` (cobra) |
+| CLI surface | `multica-notify serve \| init-config \| init-plugin \| test \| version` (cobra) |
 
 Windows note: a 32-bit gcc breaks `-race` locally; CI enforces race anyway.
 
@@ -97,6 +97,11 @@ oracle.
 
 - SemVer, documented in the README: PATCH = fixes only; MINOR = features or
   new config surface/platforms; MAJOR = breaking.
+- Release audit (do this BEFORE tagging): run
+  `git log --oneline vX.Y.Z..HEAD` and check every user-observable commit
+  has an entry under CHANGELOG `[Unreleased]` — same-commit entries are the
+  ideal, this boundary audit is the safety net when they slipped. Fix gaps
+  in `[Unreleased]` first, then tag.
 - Release: move CHANGELOG `[Unreleased]` into the version section, tag
   `vX.Y.Z`, push the tag — the release workflow builds every `PLATFORMS`
   entry with checksums and publishes. Artifacts are named
