@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-10
+
 ### Added
 
 - Release-time changelog audit: before tagging, every user-observable commit
